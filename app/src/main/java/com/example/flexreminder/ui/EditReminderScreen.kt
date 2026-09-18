@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -60,7 +61,8 @@ fun EditReminderScreen(
     var notes by remember { mutableStateOf("") }
     var startDate by remember { mutableStateOf(todayMidnight()) }
     var endDate by remember { mutableStateOf<Long?>(null) }
-    var intervalText by remember { mutableStateOf("1") }
+    var daysOnText by remember { mutableStateOf("1") }
+    var daysOffText by remember { mutableStateOf("0") }
     var hour by remember { mutableStateOf(9) }
     var minute by remember { mutableStateOf(0) }
     var enabled by remember { mutableStateOf(true) }
@@ -80,7 +82,8 @@ fun EditReminderScreen(
                 notes = r.notes
                 startDate = r.startDate
                 endDate = r.endDate
-                intervalText = r.intervalDays.toString()
+                daysOnText = r.daysOn.toString()
+                daysOffText = r.daysOff.toString()
                 hour = r.hour
                 minute = r.minute
                 enabled = r.enabled
@@ -91,7 +94,8 @@ fun EditReminderScreen(
     }
 
     val df = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
-    val intervalInt = intervalText.toIntOrNull()?.coerceAtLeast(1) ?: 1
+    val daysOn = daysOnText.toIntOrNull()?.coerceAtLeast(1) ?: 1
+    val daysOff = daysOffText.toIntOrNull()?.coerceAtLeast(0) ?: 0
     val canSave = title.isNotBlank() && loaded &&
             (endDate == null || endDate!! >= startDate)
 
@@ -172,18 +176,47 @@ fun EditReminderScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = intervalText,
-                onValueChange = { s ->
-                    intervalText = s.filter { it.isDigit() }.take(4)
-                },
-                label = { Text("Периодичность (каждые N дней)") },
-                supportingText = {
-                    Text("1 = каждый день, 2 = через день, 7 = раз в неделю, 30 ≈ раз в месяц")
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+            Text("Расписание", style = MaterialTheme.typography.titleMedium)
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = daysOnText,
+                    onValueChange = { s ->
+                        daysOnText = s.filter { it.isDigit() }.take(3)
+                    },
+                    label = { Text("Дней подряд") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = daysOffText,
+                    onValueChange = { s ->
+                        daysOffText = s.filter { it.isDigit() }.take(3)
+                    },
+                    label = { Text("Дней перерыв") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                text = "Пример: «3 дня подряд + 5 перерыв» → напоминания три дня, потом пять дней тишины, потом снова три дня, и так по кругу.",
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "Итого: ${formatPattern(daysOn, daysOff)} (цикл ${daysOn + daysOff} дн.)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(Modifier.height(16.dp))
@@ -221,7 +254,8 @@ fun EditReminderScreen(
                         notes = notes.trim(),
                         startDate = startDate,
                         endDate = endDate,
-                        intervalDays = intervalInt,
+                        daysOn = daysOn,
+                        daysOff = daysOff,
                         hour = hour,
                         minute = minute,
                         enabled = enabled,

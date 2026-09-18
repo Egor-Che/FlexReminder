@@ -12,8 +12,10 @@ data class Reminder(
     val startDate: Long,
     /** Полночь последнего дня периода, либо null — бессрочно. */
     val endDate: Long? = null,
-    /** Периодичность в днях: 1 = каждый день, 2 = через день, 30 ≈ раз в месяц. */
-    val intervalDays: Int = 1,
+    /** Сколько дней подряд напоминание срабатывает (>= 1). */
+    val daysOn: Int = 1,
+    /** Сколько дней подряд пропускается после активного блока (>= 0). */
+    val daysOff: Int = 0,
     val hour: Int = 9,
     val minute: Int = 0,
     val enabled: Boolean = true,

@@ -133,11 +133,10 @@ private fun ReminderCard(
                 Spacer(Modifier.height(4.dp))
 
                 val period = buildString {
-                    append("Каждые ")
-                    append(reminder.intervalDays)
-                    append(" дн. · ")
+                    append(formatPattern(reminder.daysOn, reminder.daysOff))
+                    append(" · с ")
                     append(dfShort.format(Date(reminder.startDate)))
-                    reminder.endDate?.let { append(" — ${dfShort.format(Date(it))}") }
+                    reminder.endDate?.let { append(" по ${dfShort.format(Date(it))}") }
                     if (reminder.silent) append(" · без звука")
                 }
                 Text(period, style = MaterialTheme.typography.bodySmall)
@@ -170,4 +169,14 @@ private fun ReminderCard(
             Switch(checked = reminder.enabled, onCheckedChange = { onToggle() })
         }
     }
+}
+
+fun formatPattern(daysOn: Int, daysOff: Int): String = when {
+    daysOff <= 0 -> "Каждый день"
+    daysOn == 1 && daysOff == 1 -> "Через день"
+    daysOn == 1 && daysOff == 6 -> "Раз в неделю"
+    daysOn == 1 && daysOff == 29 -> "Раз в 30 дней"
+    daysOn == 1 -> "Раз в ${daysOff + 1} дн."
+    daysOff == 1 -> "$daysOn дн. подряд, потом 1 дн. пауза"
+    else -> "$daysOn дн. подряд, потом $daysOff дн. пауза"
 }
