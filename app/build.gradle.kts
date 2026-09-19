@@ -16,6 +16,29 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreBase64 = System.getenv("KEYSTORE_BASE64") ?: ""
+            val keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            val keyAliasEnv = System.getenv("KEY_ALIAS") ?: "flexreminder"
+            val keyPasswordEnv = System.getenv("KEY_PASSWORD") ?: keystorePassword
+
+            if (keystoreBase64.isNotBlank()) {
+                val keystoreFile = file("${project.buildDir}/release.keystore")
+                if (!keystoreFile.exists()) {
+                    keystoreFile.parentFile?.mkdirs()
+                    keystoreFile.writeBytes(
+                        android.util.Base64.decode(keystoreBase64, android.util.Base64.DEFAULT)
+                    )
+                }
+                storeFile = keystoreFile
+                storePassword = keystorePassword
+                keyAlias = keyAliasEnv
+                keyPassword = keyPasswordEnv
+            }
+        }
+    }
+
     buildFeatures { compose = true }
 
     composeOptions {
@@ -34,6 +57,14 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = if (System.getenv("KEYSTORE_BASE64") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
