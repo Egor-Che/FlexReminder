@@ -4,10 +4,39 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverter
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Reminder::class], version = 2, exportSchema = false)
+class Converters {
+    @TypeConverter
+    fun fromLongSet(value: Set<Long>?): String {
+        if (value.isNullOrEmpty()) return ""
+        return value.sorted().joinToString(",")
+    }
+
+    @TypeConverter
+    fun toLongSet(value: String?): Set<Long> {
+        if (value.isNullOrBlank()) return emptySet()
+        return value.split(",").mapNotNull { it.trim().toLongOrNull() }.toSet()
+    }
+
+    @TypeConverter
+    fun fromScheduleMode(mode: ScheduleMode?): String = (mode ?: ScheduleMode.INTERVAL).name
+
+    @TypeConverter
+    fun toScheduleMode(value: String?): ScheduleMode {
+        return try {
+            ScheduleMode.valueOf(value ?: ScheduleMode.INTERVAL.name)
+        } catch (_: Exception) {
+            ScheduleMode.INTERVAL
+        }
+    }
+}
+
+@Database(entities = [Reminder::class], version = 3, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun reminderDao(): ReminderDao
@@ -50,6 +79,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE reminders ADD COLUMN mode TEXT NOT NULL DEFAULT 'INTERVAL'"
+                )
+                db.execSQL(
+                    "ALTER TABLE reminders ADD COLUMN customDates TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
         fun get(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -57,7 +97,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "reminders.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { INSTANCE = it }
             }

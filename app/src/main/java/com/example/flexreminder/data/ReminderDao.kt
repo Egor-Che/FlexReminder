@@ -15,6 +15,9 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): Reminder?
 
+    @Query("SELECT * FROM reminders WHERE id = :id LIMIT 1")
+    fun observeById(id: Long): Flow<Reminder?>
+
     @Query("SELECT * FROM reminders WHERE enabled = 1")
     suspend fun getEnabled(): List<Reminder>
 

@@ -19,10 +19,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -37,8 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.flexreminder.alarm.AlarmScheduler
+import com.example.flexreminder.alarm.ReminderLogic
 import com.example.flexreminder.data.Reminder
+import com.example.flexreminder.data.ScheduleMode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,7 +52,7 @@ import java.util.Locale
 fun ReminderListScreen(
     vm: ReminderViewModel,
     onAdd: () -> Unit,
-    onEdit: (Long) -> Unit
+    onOpen: (Long) -> Unit
 ) {
     val list by vm.reminders.collectAsStateWithLifecycle()
 
@@ -93,8 +97,13 @@ fun ReminderListScreen(
                 items(list, key = { it.id }) { r ->
                     ReminderCard(
                         reminder = r,
-                        onClick = { onEdit(r.id) },
-                        onToggle = { vm.toggle(r) }
+                        onClick = { onOpen(r.id) },
+                        onToggle = { vm.toggle(r) },
+                        onToggleSilent = {
+                            if (r.enabled) {
+                                vm.setSilent(r, !r.silent)
+                            }
+                        }
                     )
                 }
             }
@@ -106,12 +115,13 @@ fun ReminderListScreen(
 private fun ReminderCard(
     reminder: Reminder,
     onClick: () -> Unit,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onToggleSilent: () -> Unit
 ) {
     val dfShort = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
     val dfFull = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()) }
 
-    val next = remember(reminder) { AlarmScheduler.nextTriggerTime(reminder) }
+    val next = remember(reminder) { ReminderLogic.nextTriggerTime(reminder) }
 
     Card(
         modifier = Modifier
@@ -133,11 +143,19 @@ private fun ReminderCard(
                 Spacer(Modifier.height(4.dp))
 
                 val period = buildString {
-                    append(formatPattern(reminder.daysOn, reminder.daysOff))
-                    append(" · с ")
-                    append(dfShort.format(Date(reminder.startDate)))
-                    reminder.endDate?.let { append(" по ${dfShort.format(Date(it))}") }
-                    if (reminder.silent) append(" · без звука")
+                    when (reminder.mode) {
+                        ScheduleMode.INTERVAL -> {
+                            append(formatPattern(reminder.daysOn, reminder.daysOff))
+                            append(" · с ")
+                            append(dfShort.format(Date(reminder.startDate)))
+                            reminder.endDate?.let { append(" по ${dfShort.format(Date(it))}") }
+                        }
+                        ScheduleMode.CUSTOM_DATES -> {
+                            append("Конкретные даты: ")
+                            append(reminder.customDates.size)
+                            append(" шт.")
+                        }
+                    }
                 }
                 Text(period, style = MaterialTheme.typography.bodySmall)
 
@@ -166,7 +184,39 @@ private fun ReminderCard(
                 }
             }
 
-            Switch(checked = reminder.enabled, onCheckedChange = { onToggle() })
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Switch(
+                    checked = reminder.enabled,
+                    onCheckedChange = { onToggle() }
+                )
+                IconButton(
+                    onClick = onToggleSilent,
+                    enabled = reminder.enabled
+                ) {
+                    val silentEffective = !reminder.enabled || reminder.silent
+                    Icon(
+                        imageVector = if (silentEffective)
+                            Icons.Default.VolumeOff
+                        else
+                            Icons.Default.VolumeUp,
+                        contentDescription = when {
+                            !reminder.enabled -> "Событие выключено"
+                            reminder.silent -> "Включить звук"
+                            else -> "Выключить звук"
+                        },
+                        tint = when {
+                            !reminder.enabled ->
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            reminder.silent ->
+                                MaterialTheme.colorScheme.primary
+                            else ->
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.flexreminder.alarm.AlarmScheduler
 import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.data.Reminder
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -17,6 +18,8 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
 
     val reminders: StateFlow<List<Reminder>> = dao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun observeById(id: Long): Flow<Reminder?> = dao.observeById(id)
 
     fun save(reminder: Reminder, onDone: () -> Unit) = viewModelScope.launch {
         val id = if (reminder.id == 0L) {
@@ -33,6 +36,17 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
 
     fun toggle(reminder: Reminder) = viewModelScope.launch {
         val updated = reminder.copy(enabled = !reminder.enabled)
+        dao.update(updated)
+        AlarmScheduler.cancel(getApplication(), reminder.id)
+        if (updated.enabled) AlarmScheduler.schedule(getApplication(), updated)
+    }
+
+    /**
+     * Переключает беззвучный режим.
+     * Применяется только к включённым событиям — логика блокировки в UI.
+     */
+    fun setSilent(reminder: Reminder, silent: Boolean) = viewModelScope.launch {
+        val updated = reminder.copy(silent = silent)
         dao.update(updated)
         AlarmScheduler.cancel(getApplication(), reminder.id)
         if (updated.enabled) AlarmScheduler.schedule(getApplication(), updated)

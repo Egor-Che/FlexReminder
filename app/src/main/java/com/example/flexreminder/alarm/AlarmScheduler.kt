@@ -7,76 +7,16 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import com.example.flexreminder.data.Reminder
-import java.util.Calendar
 
 object AlarmScheduler {
-
-    private const val DAY_MS = 24L * 60 * 60 * 1000
 
     const val EXTRA_ID = "extra_id"
     const val EXTRA_TITLE = "extra_title"
     const val EXTRA_NOTES = "extra_notes"
 
-    /** Следующий момент срабатывания или null, если период закончился. */
-    fun nextTriggerTime(r: Reminder, from: Long = System.currentTimeMillis()): Long? {
-        if (r.daysOn < 1) return null
-        val daysOff = r.daysOff.coerceAtLeast(0)
-        val cycle = r.daysOn + daysOff
-        if (cycle < 1) return null
-
-        // Полночь даты старта
-        val startMidnight = Calendar.getInstance().apply {
-            timeInMillis = r.startDate
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-
-        // Полночь сегодняшнего дня
-        val todayMidnight = Calendar.getInstance().apply {
-            timeInMillis = from
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-
-        // Сколько дней прошло от startDate до сегодня
-        var dayOffset = ((todayMidnight - startMidnight) / DAY_MS).toInt()
-        if (dayOffset < 0) dayOffset = 0
-
-        // Ищем в пределах одного цикла вперёд — этого всегда достаточно
-        for (i in 0..cycle) {
-            val currentOffset = dayOffset + i
-            val posInCycle = ((currentOffset % cycle) + cycle) % cycle
-            if (posInCycle < r.daysOn) {
-                val cal = Calendar.getInstance().apply {
-                    timeInMillis = startMidnight
-                    add(Calendar.DAY_OF_YEAR, currentOffset)
-                    set(Calendar.HOUR_OF_DAY, r.hour)
-                    set(Calendar.MINUTE, r.minute)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }
-                val trigger = cal.timeInMillis
-                if (trigger > from) {
-                    val endBoundary = r.endDate?.let { endOfDay(it) }
-                    if (endBoundary != null && trigger > endBoundary) return null
-                    return trigger
-                }
-            }
-        }
-        return null
-    }
-
-    private fun endOfDay(millis: Long): Long = Calendar.getInstance().apply {
-        timeInMillis = millis
-        set(Calendar.HOUR_OF_DAY, 23)
-        set(Calendar.MINUTE, 59)
-        set(Calendar.SECOND, 59)
-        set(Calendar.MILLISECOND, 999)
-    }.timeInMillis
+    /** Следующий момент срабатывания или null, если дальше ничего нет. */
+    fun nextTriggerTime(r: Reminder, from: Long = System.currentTimeMillis()): Long? =
+        ReminderLogic.nextTriggerTime(r, from)
 
     fun schedule(context: Context, r: Reminder) {
         if (!r.enabled) {

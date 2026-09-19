@@ -21,6 +21,7 @@ import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.ui.EditReminderScreen
 import com.example.flexreminder.ui.ReminderListScreen
 import com.example.flexreminder.ui.ReminderViewModel
+import com.example.flexreminder.ui.ViewReminderScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -60,7 +61,21 @@ fun AppNav() {
             ReminderListScreen(
                 vm = vm,
                 onAdd = { nav.navigate("edit/-1") },
-                onEdit = { id -> nav.navigate("edit/$id") }
+                onOpen = { id -> nav.navigate("view/$id") }
+            )
+        }
+
+        composable(
+            route = "view/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.LongType })
+        ) { entry ->
+            val id = entry.arguments?.getLong("id") ?: -1L
+            val vm: ReminderViewModel = viewModel()
+            ViewReminderScreen(
+                vm = vm,
+                reminderId = id,
+                onBack = { nav.popBackStack() },
+                onEdit = { nav.navigate("edit/$id") }
             )
         }
 
