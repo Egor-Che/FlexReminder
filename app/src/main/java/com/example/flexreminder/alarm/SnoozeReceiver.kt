@@ -82,7 +82,7 @@ class SnoozeReceiver : BroadcastReceiver() {
         }
         return PendingIntent.getBroadcast(
             context,
-            (id * 100 + minutes + 50).toInt(),
+            fireRequestCode(id, minutes),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -92,5 +92,41 @@ class SnoozeReceiver : BroadcastReceiver() {
         const val ACTION_SNOOZE_BUTTON = "com.example.flexreminder.SNOOZE_BUTTON"
         const val ACTION_SNOOZE_FIRE = "com.example.flexreminder.SNOOZE_FIRE"
         const val EXTRA_MINUTES = "extra_minutes"
+
+        /** Минуты, для которых мы умеем ставить и отменять snooze. */
+        private val SUPPORTED_MINUTES = listOf(5, 10)
+
+        /**
+         * Отменяет все отложенные будильники (5 мин и 10 мин) для указанного напоминания
+         * и скрывает его текущее уведомление из шторки.
+         *
+         * Используется при выключении и удалении напоминания:
+         * если пользователь отложил уведомление, а потом выключил событие —
+         * отложенное уведомление не должно сработать.
+         */
+        fun cancelAllSnoozes(context: Context, reminderId: Long) {
+            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            for (minutes in SUPPORTED_MINUTES) {
+                val intent = Intent(context, SnoozeReceiver::class.java).apply {
+                    action = ACTION_SNOOZE_FIRE
+                    data = Uri.parse("flexreminder://snooze-fire/$reminderId/$minutes")
+                }
+                val pi = PendingIntent.getBroadcast(
+                    context,
+                    fireRequestCode(reminderId, minutes),
+                    intent,
+                    PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+                )
+                if (pi != null) {
+                    am.cancel(pi)
+                    pi.cancel()
+                }
+            }
+            // Убираем возможное активное уведомление этого напоминания из шторки
+            NotificationManagerCompat.from(context).cancel(reminderId.toInt())
+        }
+
+        private fun fireRequestCode(id: Long, minutes: Int): Int =
+            (id * 100 + minutes + 50).toInt()
     }
 }
