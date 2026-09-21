@@ -1,0 +1,18 @@
+blank_issues_enabled: true
+
+contact_links:
+  - name: 📋 Бэклог проекта
+    url: https://github.com/Egor-Che/FlexReminder/blob/main/BACKLOG.md
+    about: Список запланированных задач по волнам
+  - name: 🧪 Тест-план
+    url: https://github.com/Egor-Che/FlexReminder/blob/main/TEST_PLAN.md
+    about: Стратегия тестирования, окружение, критерии выхода
+  - name: 📑 Тест-кейсы
+    url: https://github.com/Egor-Che/FlexReminder/blob/main/TEST_CASES.md
+    about: Полный список тест-кейсов по реализованным фичам
+  - name: ✅ Чек-лист (реализовано)
+    url: https://github.com/Egor-Che/FlexReminder/blob/main/CHECKLIST_IMPLEMENTED.md
+    about: Быстрая регрессия по готовому функционалу
+  - name: 🚧 Чек-лист (будущее)
+    url: https://github.com/Egor-Che/FlexReminder/blob/main/CHECKLIST_FUTURE.md
+    about: Тесты для запланированных волн
