@@ -129,14 +129,21 @@ FlexReminder/
 полный пакет тестовой документации:
 
 - 📋 [План тестирования](TEST_PLAN.md)
-- 🧾 [110+ тест-кейсов](TEST_CASES.md)
+- 🧾 [133 тест-кейса](TEST_CASES.md)
 - ✅ [Чек-лист реализованного](CHECKLIST_IMPLEMENTED.md)
 - 🚧 [Чек-лист будущих фич](CHECKLIST_FUTURE.md)
 - 🎯 [Матрица трассировки](TRACEABILITY_MATRIX.md)
 - 🔁 [Шаблон регрессии](REGRESSION_TEMPLATE.md)
 
-Активные задачи и баги ведутся в [Issues](https://github.com/Egor-Che/FlexReminder/issues)
-и на канбан-доске [FlexReminder QA](https://github.com/users/Egor-Che/projects).
+### Канбан-доска
+
+Управление разработкой и тестированием ведётся на канбан-доске
+в GitHub Projects: 5 колонок, milestones по волнам, метки severity/priority.
+
+![Канбан-доска FlexReminder](docs/screenshots/board.png)
+
+Активные задачи и баги — в [Issues](https://github.com/Egor-Che/FlexReminder/issues),
+полный трекер — в [проекте FlexReminder](https://github.com/users/Egor-Che/projects).
 
 ---
 
