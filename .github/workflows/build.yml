@@ -9,16 +9,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5  # Обновлено с v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5  # Обновлено с v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v4  # Обновлено с v3 (если использовалась v4, можно оставить, она уже на Node 24)
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -32,7 +32,7 @@ jobs:
         run: ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6  # Обновлено с v4
         with:
           name: flexreminder-release
           path: app/build/outputs/apk/release/app-release.apk
