@@ -16,6 +16,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class ToggleResult {
+    /** Статус успешно изменён. */
+    CHANGED,
+    /** Действие заблокировано: системный статус. */
+    BLOCKED_BY_SYSTEM
+}
+
 class IterationsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val db = AppDatabase.get(app)
@@ -72,37 +79,76 @@ class IterationsViewModel(app: Application) : AndroidViewModel(app) {
         _iterations.value = merged
     }
 
-    fun toggleStatus(dateMillis: Long, target: IterationStatus) {
+    /**
+     * Тап по иконке статуса.
+     *
+     * Матрица переходов:
+     *  - PENDING → COMPLETED (USER) / SKIPPED (USER)
+     *  - COMPLETED (USER) → повторный тап по ✅ = PENDING или SKIPPED (SYSTEM), если итерация в прошлом
+     *  - COMPLETED (USER) → тап по ⏭️ = SKIPPED (USER)
+     *  - SKIPPED (USER) → повторный тап по ⏭️ = PENDING
+     *  - SKIPPED (USER) → тап по ✅ = COMPLETED (USER)
+     *  - SKIPPED (SYSTEM) → тап по ✅ = COMPLETED (USER) с флагом «был системный»
+     *  - SKIPPED (SYSTEM) → тап по ❌ = заблокировано
+     */
+    fun toggleStatus(dateMillis: Long, target: IterationStatus): ToggleResult {
+        val current = _iterations.value.find { it.dateMillis == dateMillis }
+        val currentStatus = current?.status ?: IterationStatus.PENDING
+        val currentSource = current?.statusSource
+
+        val isSystemSkipped = currentStatus == IterationStatus.SKIPPED &&
+                currentSource == StatusSource.SYSTEM
+
+        // #15: блокируем любые действия, кроме замены на COMPLETED
+        if (isSystemSkipped && target != IterationStatus.COMPLETED) {
+            return ToggleResult.BLOCKED_BY_SYSTEM
+        }
+
         viewModelScope.launch {
-            val current = _iterations.value.find { it.dateMillis == dateMillis }
-            val currentStatus = current?.status ?: IterationStatus.PENDING
-            val currentSource = current?.statusSource
-
             saveSnapshotFor(dateMillis)
-
             val now = System.currentTimeMillis()
+
             val newIteration: Iteration = when {
+                // Снятие USER-статуса: повторный тап по активной иконке
                 currentStatus == target && currentSource == StatusSource.USER -> {
-                    (current ?: Iteration(reminderId = reminderId, dateMillis = dateMillis))
-                        .copy(
+                    val base = current ?: Iteration(
+                        reminderId = reminderId, dateMillis = dateMillis
+                    )
+                    // Если итерация в прошлом — возвращаем SKIPPED (SYSTEM),
+                    // иначе — PENDING
+                    val iterationEnd = DateUtils.endOfDay(dateMillis)
+                    if (iterationEnd < now) {
+                        base.copy(
+                            status = IterationStatus.SKIPPED,
+                            statusSource = StatusSource.SYSTEM,
+                            statusChangedAt = now
+                        )
+                    } else {
+                        base.copy(
                             status = IterationStatus.PENDING,
                             statusSource = null,
                             statusChangedAt = now
                         )
+                    }
                 }
-                currentStatus == target && currentSource == StatusSource.SYSTEM -> {
+                // Замена системного SKIPPED на COMPLETED
+                isSystemSkipped && target == IterationStatus.COMPLETED -> {
                     current!!.copy(
+                        status = IterationStatus.COMPLETED,
                         statusSource = StatusSource.USER,
                         statusChangedAt = now
                     )
                 }
+                // Обычная замена/установка
                 else -> {
-                    (current ?: Iteration(reminderId = reminderId, dateMillis = dateMillis))
-                        .copy(
-                            status = target,
-                            statusSource = StatusSource.USER,
-                            statusChangedAt = now
-                        )
+                    val base = current ?: Iteration(
+                        reminderId = reminderId, dateMillis = dateMillis
+                    )
+                    base.copy(
+                        status = target,
+                        statusSource = StatusSource.USER,
+                        statusChangedAt = now
+                    )
                 }
             }
 
@@ -116,6 +162,7 @@ class IterationsViewModel(app: Application) : AndroidViewModel(app) {
             _hasChanges.value = true
             refresh()
         }
+        return ToggleResult.CHANGED
     }
 
     fun countCompletablePast(): Int =

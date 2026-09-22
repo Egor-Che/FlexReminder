@@ -1,5 +1,6 @@
 package com.example.flexreminder.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,12 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.flexreminder.alarm.DateUtils
-import com.example.flexreminder.data.Iteration
 import com.example.flexreminder.data.IterationStatus
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,6 +59,7 @@ fun MarkIterationsScreen(
     val vm: IterationsViewModel = viewModel()
     LaunchedEffect(reminderId) { vm.load(reminderId) }
 
+    val context = LocalContext.current
     val reminder by vm.reminder.collectAsStateWithLifecycle()
     val iterations by vm.iterations.collectAsStateWithLifecycle()
     val hasChanges by vm.hasChanges.collectAsStateWithLifecycle()
@@ -73,14 +74,24 @@ fun MarkIterationsScreen(
         else iterations
     }
 
-    val todayMidnight = remember { DateUtils.midnight(System.currentTimeMillis()) }
-    val initialIndex = remember(visibleIterations) {
-        visibleIterations.indexOfFirst { it.dateMillis >= todayMidnight }
-            .let { if (it < 0) (visibleIterations.size - 1).coerceAtLeast(0) else it }
-    }
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+    val listState = rememberLazyListState()
+    var initialScrollDone by remember(reminderId) { mutableStateOf(false) }
 
     val r = reminder
+
+    // #13: начальный скролл выполняется ПОСЛЕ загрузки данных
+    // #12: сравнение с учётом часа и минуты, а не только даты
+    LaunchedEffect(visibleIterations, r) {
+        if (!initialScrollDone && r != null && visibleIterations.isNotEmpty()) {
+            val now = System.currentTimeMillis()
+            val idx = visibleIterations.indexOfFirst {
+                DateUtils.atTime(it.dateMillis, r.hour, r.minute) > now
+            }.let { if (it < 0) (visibleIterations.size - 1).coerceAtLeast(0) else it }
+            listState.scrollToItem(idx)
+            initialScrollDone = true
+        }
+    }
+
     if (r == null) {
         Scaffold(
             topBar = {
@@ -129,7 +140,6 @@ fun MarkIterationsScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
         ) {
-            // Шапка с массовыми действиями
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,11 +200,17 @@ fun MarkIterationsScreen(
                         .padding(horizontal = 12.dp),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    itemsIndexed(visibleIterations, key = { _, it -> it.dateMillis }) { _, iteration ->
-                        val isNearest = iteration.dateMillis >= todayMidnight &&
-                                visibleIterations
-                                    .firstOrNull { it.dateMillis >= todayMidnight }
-                                    ?.dateMillis == iteration.dateMillis
+                    itemsIndexed(
+                        visibleIterations,
+                        key = { _, it -> it.dateMillis }
+                    ) { _, iteration ->
+                        val now = System.currentTimeMillis()
+                        val isNearest = DateUtils.atTime(
+                            iteration.dateMillis, r.hour, r.minute
+                        ) > now &&
+                                visibleIterations.firstOrNull {
+                                    DateUtils.atTime(it.dateMillis, r.hour, r.minute) > now
+                                }?.dateMillis == iteration.dateMillis
 
                         IterationRow(
                             iteration = iteration,
@@ -205,7 +221,23 @@ fun MarkIterationsScreen(
                                 vm.toggleStatus(iteration.dateMillis, IterationStatus.COMPLETED)
                             },
                             onClickSkip = {
-                                vm.toggleStatus(iteration.dateMillis, IterationStatus.SKIPPED)
+                                val result = vm.toggleStatus(
+                                    iteration.dateMillis, IterationStatus.SKIPPED
+                                )
+                                if (result == ToggleResult.BLOCKED_BY_SYSTEM) {
+                                    Toast.makeText(
+                                        context,
+                                        "Системный статус. Чтобы изменить, нажмите на зелёную галочку",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            onBlockedBySystem = {
+                                Toast.makeText(
+                                    context,
+                                    "Системный статус. Чтобы изменить, нажмите на зелёную галочку",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         )
                     }
@@ -234,7 +266,6 @@ fun MarkIterationsScreen(
         }
     }
 
-    // Диалоги
     if (showCompleteAllDialog) {
         val count = vm.countCompletablePast()
         val range = vm.pastRange()
