@@ -17,9 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 enum class ToggleResult {
-    /** Статус успешно изменён. */
     CHANGED,
-    /** Действие заблокировано: системный статус. */
     BLOCKED_BY_SYSTEM
 }
 
@@ -83,13 +81,18 @@ class IterationsViewModel(app: Application) : AndroidViewModel(app) {
      * Тап по иконке статуса.
      *
      * Матрица переходов:
-     *  - PENDING → COMPLETED (USER) / SKIPPED (USER)
-     *  - COMPLETED (USER) → повторный тап по ✅ = PENDING или SKIPPED (SYSTEM), если итерация в прошлом
-     *  - COMPLETED (USER) → тап по ⏭️ = SKIPPED (USER)
-     *  - SKIPPED (USER) → повторный тап по ⏭️ = PENDING
-     *  - SKIPPED (USER) → тап по ✅ = COMPLETED (USER)
-     *  - SKIPPED (SYSTEM) → тап по ✅ = COMPLETED (USER) с флагом «был системный»
-     *  - SKIPPED (SYSTEM) → тап по ❌ = заблокировано
+     *  Будущие/сегодняшние итерации:
+     *    - PENDING → COMPLETED (USER) / SKIPPED (USER)
+     *    - COMPLETED (USER) → повторный тап по ✅ = PENDING
+     *    - COMPLETED (USER) → тап по ⏭️ = SKIPPED (USER)
+     *    - SKIPPED (USER) → повторный тап по ⏭️ = PENDING
+     *    - SKIPPED (USER) → тап по ✅ = COMPLETED (USER)
+     *
+     *  Прошедшие итерации:
+     *    - SKIPPED (SYSTEM) → тап по ✅ = COMPLETED (USER), тап по ❌ = блок
+     *    - COMPLETED (USER) → повторный тап по ✅ = SKIPPED (SYSTEM)
+     *    - COMPLETED (USER) → тап по ⏭️ = SKIPPED (SYSTEM) (не USER!)
+     *    - PENDING → тап по ⏭️ = SKIPPED (SYSTEM) (не USER!)
      */
     fun toggleStatus(dateMillis: Long, target: IterationStatus): ToggleResult {
         val current = _iterations.value.find { it.dateMillis == dateMillis }
@@ -99,7 +102,6 @@ class IterationsViewModel(app: Application) : AndroidViewModel(app) {
         val isSystemSkipped = currentStatus == IterationStatus.SKIPPED &&
                 currentSource == StatusSource.SYSTEM
 
-        // #15: блокируем любые действия, кроме замены на COMPLETED
         if (isSystemSkipped && target != IterationStatus.COMPLETED) {
             return ToggleResult.BLOCKED_BY_SYSTEM
         }
@@ -107,6 +109,7 @@ class IterationsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             saveSnapshotFor(dateMillis)
             val now = System.currentTimeMillis()
+            val isPast = DateUtils.endOfDay(dateMillis) < now
 
             val newIteration: Iteration = when {
                 // Снятие USER-статуса: повторный тап по активной иконке
@@ -114,10 +117,9 @@ class IterationsViewModel(app: Application) : AndroidViewModel(app) {
                     val base = current ?: Iteration(
                         reminderId = reminderId, dateMillis = dateMillis
                     )
-                    // Если итерация в прошлом — возвращаем SKIPPED (SYSTEM),
-                    // иначе — PENDING
-                    val iterationEnd = DateUtils.endOfDay(dateMillis)
-                    if (iterationEnd < now) {
+                    if (isPast) {
+                        // Прошедшая итерация не может стать PENDING —
+                        // возвращаем системный пропуск
                         base.copy(
                             status = IterationStatus.SKIPPED,
                             statusSource = StatusSource.SYSTEM,
@@ -144,9 +146,15 @@ class IterationsViewModel(app: Application) : AndroidViewModel(app) {
                     val base = current ?: Iteration(
                         reminderId = reminderId, dateMillis = dateMillis
                     )
+                    // Для прошедшей итерации SKIPPED — всегда SYSTEM
+                    val effectiveSource = if (target == IterationStatus.SKIPPED && isPast) {
+                        StatusSource.SYSTEM
+                    } else {
+                        StatusSource.USER
+                    }
                     base.copy(
                         status = target,
-                        statusSource = StatusSource.USER,
+                        statusSource = effectiveSource,
                         statusChangedAt = now
                     )
                 }
@@ -220,9 +228,15 @@ class IterationsViewModel(app: Application) : AndroidViewModel(app) {
         val now = System.currentTimeMillis()
         val toUpdate = targets.map { it ->
             saveSnapshotFor(it.dateMillis)
+            val isPast = DateUtils.endOfDay(it.dateMillis) < now
+            val effectiveSource = if (newStatus == IterationStatus.SKIPPED && isPast) {
+                StatusSource.SYSTEM
+            } else {
+                StatusSource.USER
+            }
             it.copy(
                 status = newStatus,
-                statusSource = StatusSource.USER,
+                statusSource = effectiveSource,
                 statusChangedAt = now
             )
         }

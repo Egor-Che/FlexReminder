@@ -85,17 +85,17 @@ fun IterationRow(
 
         StatusIconButton(
             isActive = status == IterationStatus.COMPLETED,
-            color = CompletedColor,
+            activeColor = CompletedColor,
+            isCheck = true,
             contentDescription = "Выполнено",
-            icon = { Icon(Icons.Default.Check, contentDescription = null, tint = Color.White) },
             onClick = onClickComplete
         )
         Spacer(Modifier.width(8.dp))
         StatusIconButton(
             isActive = status == IterationStatus.SKIPPED,
-            color = skippedColor(source),
+            activeColor = skippedColor(source),
+            isCheck = false,
             contentDescription = "Пропустить",
-            icon = { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) },
             onClick = {
                 if (isSystemStatus) onBlockedBySystem() else onClickSkip()
             }
@@ -120,27 +120,33 @@ fun skippedColor(source: StatusSource?): Color =
 @Composable
 private fun StatusIconButton(
     isActive: Boolean,
-    color: Color,
+    activeColor: Color,
+    isCheck: Boolean,
     contentDescription: String,
-    icon: @Composable () -> Unit,
     onClick: () -> Unit
 ) {
+    val icon = if (isCheck) Icons.Default.Check else Icons.Default.Close
+    val inactiveColor = MaterialTheme.colorScheme.outline
+
     Box(
         modifier = Modifier
             .size(36.dp)
             .clip(CircleShape)
-            .background(if (isActive) color else Color.Transparent)
+            .background(if (isActive) activeColor else Color.Transparent)
             .border(
                 width = 1.dp,
-                color = if (isActive) color
-                else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                color = if (isActive) activeColor
+                else inactiveColor.copy(alpha = 0.5f),
                 shape = CircleShape
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (isActive) {
-            icon()
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (isActive) Color.White else inactiveColor.copy(alpha = 0.7f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

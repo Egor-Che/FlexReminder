@@ -25,6 +25,7 @@ import com.example.flexreminder.ui.EditReminderScreen
 import com.example.flexreminder.ui.MarkIterationsScreen
 import com.example.flexreminder.ui.ReminderListScreen
 import com.example.flexreminder.ui.ReminderViewModel
+import com.example.flexreminder.ui.SettingsScreen
 import com.example.flexreminder.ui.ViewReminderScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,15 +36,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Notifications.ensureChannels(this)
 
-        // Периодический автопропуск раз в 3 часа
         AutoSkipWorker.schedule(this)
 
-        // Немедленная проверка автопропуска при запуске
         WorkManager.getInstance(this).enqueue(
             OneTimeWorkRequestBuilder<AutoSkipWorker>().build()
         )
 
-        // Перепланирование активных будильников с учётом отметок
         lifecycleScope.launch(Dispatchers.IO) {
             val dao = AppDatabase.get(this@MainActivity).reminderDao()
             dao.getEnabled().forEach { r ->
@@ -74,7 +72,14 @@ fun AppNav() {
                 vm = vm,
                 onAdd = { nav.navigate("edit/-1") },
                 onOpen = { id -> nav.navigate("view/$id") },
-                onMark = { id -> nav.navigate("mark/$id") }
+                onMark = { id -> nav.navigate("mark/$id") },
+                onSettings = { nav.navigate("settings") }
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                onBack = { nav.popBackStack() }
             )
         }
 

@@ -8,12 +8,14 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
+import com.example.flexreminder.data.AppDatabase
+import com.example.flexreminder.data.Iteration
+import com.example.flexreminder.data.IterationStatus
+import com.example.flexreminder.data.SettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
-/**
- * Обрабатывает:
- *  1. ACTION_SNOOZE_BUTTON — нажатие «Отложить» в уведомлении.
- *  2. ACTION_SNOOZE_FIRE   — срабатывание отложенного будильника.
- */
 class SnoozeReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -27,17 +29,19 @@ class SnoozeReceiver : BroadcastReceiver() {
         val id = intent.getLongExtra(AlarmScheduler.EXTRA_ID, -1L)
         if (id < 0) return
 
-        val minutes = intent.getIntExtra(EXTRA_MINUTES, 5)
+        val minutes = intent.getIntExtra(EXTRA_MINUTES, -1)
+        if (minutes <= 0) return
+
+        val dateMillis = intent.getLongExtra(EXTRA_DATE_MILLIS, -1L)
         val title = intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "Напоминание"
         val notes = intent.getStringExtra(AlarmScheduler.EXTRA_NOTES).orEmpty()
         val silent = intent.getBooleanExtra(Notifications.EXTRA_SILENT, false)
 
-        // Скрываем текущее уведомление
         NotificationManagerCompat.from(context).cancel(id.toInt())
 
         val trigger = System.currentTimeMillis() + minutes * 60_000L
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val pi = firePI(context, id, title, notes, silent, minutes)
+        val pi = firePI(context, id, dateMillis, title, notes, silent, minutes)
 
         try {
             val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
@@ -50,22 +54,94 @@ class SnoozeReceiver : BroadcastReceiver() {
         } catch (_: SecurityException) {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pi)
         }
+
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                if (dateMillis > 0) {
+                    val db = AppDatabase.get(context)
+                    val dao = db.iterationDao()
+                    val existing = dao.get(id, dateMillis)
+                    val base = existing
+                        ?: Iteration(reminderId = id, dateMillis = dateMillis)
+                    dao.upsertByDate(
+                        base.copy(
+                            snoozeCount = base.snoozeCount + 1,
+                            lastSnoozeAt = System.currentTimeMillis()
+                        )
+                    )
+                }
+            } finally {
+                pending.finish()
+            }
+        }
     }
 
     private fun handleSnoozeFire(context: Context, intent: Intent) {
         val id = intent.getLongExtra(AlarmScheduler.EXTRA_ID, -1L)
         if (id < 0) return
 
+        val dateMillis = intent.getLongExtra(EXTRA_DATE_MILLIS, -1L)
         val title = intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "Напоминание"
         val notes = intent.getStringExtra(AlarmScheduler.EXTRA_NOTES).orEmpty()
         val silent = intent.getBooleanExtra(Notifications.EXTRA_SILENT, false)
 
-        Notifications.show(context, id, title, notes, silent)
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val db = AppDatabase.get(context)
+                val reminderDao = db.reminderDao()
+                val iterationDao = db.iterationDao()
+
+                val reminder = reminderDao.getById(id) ?: return@launch
+
+                val iteration = if (dateMillis > 0) {
+                    iterationDao.get(id, dateMillis)
+                } else null
+
+                val alreadyMarked = iteration != null && (
+                        iteration.status == IterationStatus.COMPLETED ||
+                                iteration.status == IterationStatus.SKIPPED
+                        )
+                if (alreadyMarked) return@launch
+
+                val snoozeCount = iteration?.snoozeCount ?: 0
+
+                val settings = SettingsRepository.get(context)
+                val snoozeShort = settings.getSnoozeShort()
+                val snoozeLong = settings.getSnoozeLong()
+
+                val flags = Notifications.computeFlags(
+                    reminder = reminder,
+                    dateMillis = dateMillis,
+                    snoozeCount = snoozeCount,
+                    snoozeShortMinutes = snoozeShort,
+                    snoozeLongMinutes = snoozeLong
+                )
+
+                Notifications.show(
+                    context = context,
+                    id = id,
+                    title = title,
+                    text = notes,
+                    silent = silent,
+                    dateMillis = dateMillis,
+                    showSnoozeShort = flags.showSnoozeShort,
+                    showSnoozeLong = flags.showSnoozeLong,
+                    showSkip = flags.showSkip,
+                    snoozeShortMinutes = snoozeShort,
+                    snoozeLongMinutes = snoozeLong
+                )
+            } finally {
+                pending.finish()
+            }
+        }
     }
 
     private fun firePI(
         context: Context,
         id: Long,
+        dateMillis: Long,
         title: String,
         notes: String,
         silent: Boolean,
@@ -73,8 +149,9 @@ class SnoozeReceiver : BroadcastReceiver() {
     ): PendingIntent {
         val intent = Intent(context, SnoozeReceiver::class.java).apply {
             action = ACTION_SNOOZE_FIRE
-            data = Uri.parse("flexreminder://snooze-fire/$id/$minutes")
+            data = Uri.parse("flexreminder://snooze-fire/$id/$dateMillis/$minutes")
             putExtra(AlarmScheduler.EXTRA_ID, id)
+            putExtra(EXTRA_DATE_MILLIS, dateMillis)
             putExtra(AlarmScheduler.EXTRA_TITLE, title)
             putExtra(AlarmScheduler.EXTRA_NOTES, notes)
             putExtra(Notifications.EXTRA_SILENT, silent)
@@ -92,24 +169,19 @@ class SnoozeReceiver : BroadcastReceiver() {
         const val ACTION_SNOOZE_BUTTON = "com.example.flexreminder.SNOOZE_BUTTON"
         const val ACTION_SNOOZE_FIRE = "com.example.flexreminder.SNOOZE_FIRE"
         const val EXTRA_MINUTES = "extra_minutes"
+        const val EXTRA_DATE_MILLIS = "extra_date_millis"
 
-        /** Минуты, для которых мы умеем ставить и отменять snooze. */
-        private val SUPPORTED_MINUTES = listOf(5, 10)
-
-        /**
-         * Отменяет все отложенные будильники (5 мин и 10 мин) для указанного напоминания
-         * и скрывает его текущее уведомление из шторки.
-         *
-         * Используется при выключении и удалении напоминания:
-         * если пользователь отложил уведомление, а потом выключил событие —
-         * отложенное уведомление не должно сработать.
-         */
         fun cancelAllSnoozes(context: Context, reminderId: Long) {
             val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            for (minutes in SUPPORTED_MINUTES) {
+            val repository = SettingsRepository.get(context)
+            val minutesList = listOf(
+                repository.getSnoozeShortBlocking(),
+                repository.getSnoozeLongBlocking()
+            )
+            for (minutes in minutesList) {
                 val intent = Intent(context, SnoozeReceiver::class.java).apply {
                     action = ACTION_SNOOZE_FIRE
-                    data = Uri.parse("flexreminder://snooze-fire/$reminderId/$minutes")
+                    data = Uri.parse("flexreminder://snooze-fire/$reminderId/-1/$minutes")
                 }
                 val pi = PendingIntent.getBroadcast(
                     context,
@@ -122,11 +194,10 @@ class SnoozeReceiver : BroadcastReceiver() {
                     pi.cancel()
                 }
             }
-            // Убираем возможное активное уведомление этого напоминания из шторки
             NotificationManagerCompat.from(context).cancel(reminderId.toInt())
         }
 
         private fun fireRequestCode(id: Long, minutes: Int): Int =
-            (id * 100 + minutes + 50).toInt()
+            (id * 1000 + 100 + minutes).toInt()
     }
 }

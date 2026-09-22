@@ -1,6 +1,5 @@
 package com.example.flexreminder.ui
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +27,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,15 +39,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.data.IterationStatus
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -59,7 +62,9 @@ fun MarkIterationsScreen(
     val vm: IterationsViewModel = viewModel()
     LaunchedEffect(reminderId) { vm.load(reminderId) }
 
-    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     val reminder by vm.reminder.collectAsStateWithLifecycle()
     val iterations by vm.iterations.collectAsStateWithLifecycle()
     val hasChanges by vm.hasChanges.collectAsStateWithLifecycle()
@@ -79,8 +84,6 @@ fun MarkIterationsScreen(
 
     val r = reminder
 
-    // #13: начальный скролл выполняется ПОСЛЕ загрузки данных
-    // #12: сравнение с учётом часа и минуты, а не только даты
     LaunchedEffect(visibleIterations, r) {
         if (!initialScrollDone && r != null && visibleIterations.isNotEmpty()) {
             val now = System.currentTimeMillis()
@@ -92,8 +95,18 @@ fun MarkIterationsScreen(
         }
     }
 
+    val showSystemHint: () -> Unit = {
+        scope.launch {
+            snackbarHostState.showSnackbar(
+                message = "Чтобы изменить, нажмите на галочку",
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
+
     if (r == null) {
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
                     title = { Text("Отметки") },
@@ -120,6 +133,7 @@ fun MarkIterationsScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Отметки: ${r.title}") },
@@ -221,24 +235,9 @@ fun MarkIterationsScreen(
                                 vm.toggleStatus(iteration.dateMillis, IterationStatus.COMPLETED)
                             },
                             onClickSkip = {
-                                val result = vm.toggleStatus(
-                                    iteration.dateMillis, IterationStatus.SKIPPED
-                                )
-                                if (result == ToggleResult.BLOCKED_BY_SYSTEM) {
-                                    Toast.makeText(
-                                        context,
-                                        "Системный статус. Чтобы изменить, нажмите на зелёную галочку",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                                vm.toggleStatus(iteration.dateMillis, IterationStatus.SKIPPED)
                             },
-                            onBlockedBySystem = {
-                                Toast.makeText(
-                                    context,
-                                    "Системный статус. Чтобы изменить, нажмите на зелёную галочку",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
+                            onBlockedBySystem = showSystemHint
                         )
                     }
                 }

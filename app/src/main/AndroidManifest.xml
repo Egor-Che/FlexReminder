@@ -27,6 +27,10 @@
         <receiver
             android:name=".alarm.ReminderReceiver"
             android:exported="false" />
+			
+		<receiver
+            android:name=".alarm.MarkSkippedReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".alarm.SnoozeReceiver"

@@ -5,18 +5,13 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 enum class IterationStatus {
-    /** Никакой отметки нет. */
     PENDING,
-    /** Пользователь отметил, что действие выполнено. */
     COMPLETED,
-    /** Пропущено — либо пользователем, либо системой. */
     SKIPPED
 }
 
 enum class StatusSource {
-    /** Статус поставлен пользователем вручную. */
     USER,
-    /** Статус поставлен системой автоматически (автопропуск). */
     SYSTEM
 }
 
@@ -35,5 +30,9 @@ data class Iteration(
     /** Время установки статуса (для истории). */
     val statusChangedAt: Long? = null,
     /** Время реального срабатывания уведомления (для будущей истории). */
-    val firedAt: Long? = null
+    val firedAt: Long? = null,
+    /** Сколько раз пользователь отложил уведомление для этой итерации. */
+    val snoozeCount: Int = 0,
+    /** Время последнего snooze (для расчёта автопропуска). null = snooze не было. */
+    val lastSnoozeAt: Long? = null
 )

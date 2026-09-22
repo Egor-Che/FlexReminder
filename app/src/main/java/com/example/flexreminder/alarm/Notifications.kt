@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.flexreminder.MainActivity
+import com.example.flexreminder.data.Reminder
 
 object Notifications {
 
@@ -20,6 +21,67 @@ object Notifications {
     private const val CHANNEL_SILENT = "reminders_silent"
 
     const val EXTRA_SILENT = "extra_silent"
+
+    /** Максимальное количество snooze на одну итерацию. */
+    const val MAX_SNOOZE_COUNT = 5
+
+    data class ActionFlags(
+        val showSnoozeShort: Boolean,
+        val showSnoozeLong: Boolean,
+        val showSkip: Boolean
+    )
+
+    /**
+     * Вычисляет, какие кнопки показывать в уведомлении.
+     *
+     *  - snooze Short — если (сейчас + short) < время следующей итерации
+     *    И snoozeCount < MAX_SNOOZE_COUNT
+     *  - snooze Long  — если (сейчас + long) < время следующей итерации
+     *    И snoozeCount < MAX_SNOOZE_COUNT
+     *  - skip — если snoozeCount >= MAX_SNOOZE_COUNT
+     *
+     * Значения short и long берутся из настроек пользователя.
+     */
+    fun computeFlags(
+        reminder: Reminder,
+        dateMillis: Long,
+        snoozeCount: Int,
+        snoozeShortMinutes: Int,
+        snoozeLongMinutes: Int
+    ): ActionFlags {
+        val now = System.currentTimeMillis()
+        val nextIterationTime = findNextIterationTime(reminder, dateMillis)
+
+        val canSnooze = snoozeCount < MAX_SNOOZE_COUNT
+        val showSnoozeShort = canSnooze &&
+                (nextIterationTime == null ||
+                        now + snoozeShortMinutes * 60_000L < nextIterationTime)
+        val showSnoozeLong = canSnooze &&
+                (nextIterationTime == null ||
+                        now + snoozeLongMinutes * 60_000L < nextIterationTime)
+        val showSkip = !canSnooze
+
+        return ActionFlags(showSnoozeShort, showSnoozeLong, showSkip)
+    }
+
+    private fun findNextIterationTime(reminder: Reminder, currentDateMillis: Long): Long? {
+        if (currentDateMillis <= 0) return null
+        return try {
+            val currentTrigger = DateUtils.atTime(
+                currentDateMillis, reminder.hour, reminder.minute
+            )
+            ReminderLogic.nextTriggerTime(reminder, currentTrigger + 1)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun formatSnoozeLabel(minutes: Int): String = when {
+        minutes < 60 -> "Отложить $minutes мин"
+        minutes == 60 -> "Отложить 1 час"
+        minutes % 60 == 0 -> "Отложить ${minutes / 60} ч"
+        else -> "Отложить ${minutes / 60} ч ${minutes % 60} мин"
+    }
 
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -55,7 +117,13 @@ object Notifications {
         id: Long,
         title: String,
         text: String,
-        silent: Boolean = false
+        silent: Boolean = false,
+        dateMillis: Long = -1L,
+        showSnoozeShort: Boolean = true,
+        showSnoozeLong: Boolean = true,
+        showSkip: Boolean = false,
+        snoozeShortMinutes: Int,
+        snoozeLongMinutes: Int
     ) {
         ensureChannels(context)
 
@@ -78,9 +146,14 @@ object Notifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val markCompleted = buildMarkCompletedPI(context, id, title, text, silent)
-        val snooze5 = buildSnoozePI(context, id, title, text, silent, 5)
-        val snooze10 = buildSnoozePI(context, id, title, text, silent, 10)
+        val markCompleted = buildMarkCompletedPI(context, id, dateMillis, title, text, silent)
+        val markSkipped = buildMarkSkippedPI(context, id, dateMillis, title, text, silent)
+        val snoozeShortPi = buildSnoozePI(
+            context, id, dateMillis, title, text, silent, snoozeShortMinutes
+        )
+        val snoozeLongPi = buildSnoozePI(
+            context, id, dateMillis, title, text, silent, snoozeLongMinutes
+        )
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
@@ -99,16 +172,28 @@ object Notifications {
                 "Выполнено",
                 markCompleted
             )
-            .addAction(
+
+        if (showSnoozeShort) {
+            builder.addAction(
                 android.R.drawable.ic_menu_recent_history,
-                "Отложить 5 мин",
-                snooze5
+                formatSnoozeLabel(snoozeShortMinutes),
+                snoozeShortPi
             )
-            .addAction(
+        }
+        if (showSnoozeLong) {
+            builder.addAction(
                 android.R.drawable.ic_menu_recent_history,
-                "Отложить 10 мин",
-                snooze10
+                formatSnoozeLabel(snoozeLongMinutes),
+                snoozeLongPi
             )
+        }
+        if (showSkip) {
+            builder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Пропустить",
+                markSkipped
+            )
+        }
 
         if (silent) builder.setSilent(true)
 
@@ -122,21 +207,48 @@ object Notifications {
     private fun buildMarkCompletedPI(
         context: Context,
         id: Long,
+        dateMillis: Long,
         title: String,
         notes: String,
         silent: Boolean
     ): PendingIntent {
         val intent = Intent(context, MarkCompletedReceiver::class.java).apply {
             action = MarkCompletedReceiver.ACTION_MARK_COMPLETED
-            data = Uri.parse("flexreminder://mark-completed/$id")
+            data = Uri.parse("flexreminder://mark-completed/$id/$dateMillis")
             putExtra(AlarmScheduler.EXTRA_ID, id)
+            putExtra(SnoozeReceiver.EXTRA_DATE_MILLIS, dateMillis)
             putExtra(AlarmScheduler.EXTRA_TITLE, title)
             putExtra(AlarmScheduler.EXTRA_NOTES, notes)
             putExtra(EXTRA_SILENT, silent)
         }
         return PendingIntent.getBroadcast(
             context,
-            (id * 100 + 90).toInt(),
+            (id * 1000 + 1).toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun buildMarkSkippedPI(
+        context: Context,
+        id: Long,
+        dateMillis: Long,
+        title: String,
+        notes: String,
+        silent: Boolean
+    ): PendingIntent {
+        val intent = Intent(context, MarkSkippedReceiver::class.java).apply {
+            action = MarkSkippedReceiver.ACTION_MARK_SKIPPED
+            data = Uri.parse("flexreminder://mark-skipped/$id/$dateMillis")
+            putExtra(AlarmScheduler.EXTRA_ID, id)
+            putExtra(SnoozeReceiver.EXTRA_DATE_MILLIS, dateMillis)
+            putExtra(AlarmScheduler.EXTRA_TITLE, title)
+            putExtra(AlarmScheduler.EXTRA_NOTES, notes)
+            putExtra(EXTRA_SILENT, silent)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            (id * 1000 + 2).toInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -145,6 +257,7 @@ object Notifications {
     private fun buildSnoozePI(
         context: Context,
         id: Long,
+        dateMillis: Long,
         title: String,
         notes: String,
         silent: Boolean,
@@ -152,8 +265,9 @@ object Notifications {
     ): PendingIntent {
         val intent = Intent(context, SnoozeReceiver::class.java).apply {
             action = SnoozeReceiver.ACTION_SNOOZE_BUTTON
-            data = Uri.parse("flexreminder://snooze/$id/$minutes")
+            data = Uri.parse("flexreminder://snooze/$id/$dateMillis/$minutes")
             putExtra(AlarmScheduler.EXTRA_ID, id)
+            putExtra(SnoozeReceiver.EXTRA_DATE_MILLIS, dateMillis)
             putExtra(AlarmScheduler.EXTRA_TITLE, title)
             putExtra(AlarmScheduler.EXTRA_NOTES, notes)
             putExtra(EXTRA_SILENT, silent)
@@ -161,7 +275,7 @@ object Notifications {
         }
         return PendingIntent.getBroadcast(
             context,
-            (id * 100 + minutes).toInt(),
+            (id * 1000 + 3 + minutes).toInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

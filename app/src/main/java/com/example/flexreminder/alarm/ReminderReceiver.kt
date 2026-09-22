@@ -6,6 +6,7 @@ import android.content.Intent
 import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.data.Iteration
 import com.example.flexreminder.data.IterationStatus
+import com.example.flexreminder.data.SettingsRepository
 import com.example.flexreminder.data.StatusSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,17 +32,12 @@ class ReminderReceiver : BroadcastReceiver() {
                 val reminder = reminderDao.getById(id)
                 if (reminder == null || !reminder.enabled) return@launch
 
-                // Находим текущую итерацию (та, что только что сработала)
                 val now = System.currentTimeMillis()
-                val todayMidnight = DateUtils.midnight(now)
-
-                val scheduledDate = findScheduledIterationDate(reminder, iterationDao, now)
-                    ?: todayMidnight
+                val scheduledDate = findScheduledIterationDate(reminder, now)
+                    ?: DateUtils.midnight(now)
 
                 val existing = iterationDao.get(id, scheduledDate)
 
-                // Проверяем статус: если пользователь заранее отметил итерацию —
-                // уведомление не показываем, сразу планируем следующее
                 val alreadyMarked = existing != null && (
                         existing.status == IterationStatus.COMPLETED ||
                                 (existing.status == IterationStatus.SKIPPED &&
@@ -49,7 +45,6 @@ class ReminderReceiver : BroadcastReceiver() {
                         )
 
                 if (!alreadyMarked) {
-                    // Записываем firedAt и обновляем/создаём запись итерации
                     val iteration = existing?.copy(firedAt = now)
                         ?: Iteration(
                             reminderId = id,
@@ -58,11 +53,35 @@ class ReminderReceiver : BroadcastReceiver() {
                         )
                     iterationDao.upsertByDate(iteration)
 
-                    // Показываем уведомление
-                    Notifications.show(context, id, title, notes, silent)
+                    val snoozeCount = iteration.snoozeCount
+
+                    val settings = SettingsRepository.get(context)
+                    val snoozeShort = settings.getSnoozeShort()
+                    val snoozeLong = settings.getSnoozeLong()
+
+                    val flags = Notifications.computeFlags(
+                        reminder = reminder,
+                        dateMillis = scheduledDate,
+                        snoozeCount = snoozeCount,
+                        snoozeShortMinutes = snoozeShort,
+                        snoozeLongMinutes = snoozeLong
+                    )
+
+                    Notifications.show(
+                        context = context,
+                        id = id,
+                        title = title,
+                        text = notes,
+                        silent = silent,
+                        dateMillis = scheduledDate,
+                        showSnoozeShort = flags.showSnoozeShort,
+                        showSnoozeLong = flags.showSnoozeLong,
+                        showSkip = flags.showSkip,
+                        snoozeShortMinutes = snoozeShort,
+                        snoozeLongMinutes = snoozeLong
+                    )
                 }
 
-                // Перепланируем следующее срабатывание
                 AlarmScheduler.schedule(context, reminder)
             } finally {
                 pending.finish()
@@ -70,14 +89,8 @@ class ReminderReceiver : BroadcastReceiver() {
         }
     }
 
-    /**
-     * Определяет, на какую дату было запланировано срабатывание.
-     * Ищем ближайшую к now итерацию, которая уже должна была сработать,
-     * но ещё не обработана. Окно поиска — ±2 дня от сегодня.
-     */
-    private suspend fun findScheduledIterationDate(
+    private fun findScheduledIterationDate(
         reminder: com.example.flexreminder.data.Reminder,
-        iterationDao: com.example.flexreminder.data.IterationDao,
         now: Long
     ): Long? {
         val todayMidnight = DateUtils.midnight(now)
@@ -87,8 +100,6 @@ class ReminderReceiver : BroadcastReceiver() {
         val dates = IterationLogic.generateIterationDates(reminder, from, to)
         if (dates.isEmpty()) return null
 
-        // Берём последнюю дату, чей момент срабатывания (с учётом времени напоминания)
-        // уже наступил, но не более 5 минут назад (защита от старых срабатываний)
         return dates
             .map { DateUtils.atTime(it, reminder.hour, reminder.minute) to it }
             .filter { (trigger, _) -> trigger <= now }

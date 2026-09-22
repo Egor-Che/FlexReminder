@@ -1,10 +1,31 @@
 import java.util.Base64
+import java.util.Properties
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
 }
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+fun propOrEnv(key: String): String? =
+    localProps.getProperty(key) ?: System.getenv(key)
+
+val ciKeystoreBase64 = System.getenv("KEYSTORE_BASE64")
+val localKeystorePath = propOrEnv("KEYSTORE_FILE")
+val localKeystorePassword = propOrEnv("KEYSTORE_PASSWORD")
+val localKeyAlias = propOrEnv("KEY_ALIAS") ?: "flexreminder"
+val localKeyPassword = propOrEnv("KEY_PASSWORD") ?: localKeystorePassword
+
+val hasCiSigning = !ciKeystoreBase64.isNullOrBlank()
+val hasLocalSigning = !localKeystorePath.isNullOrBlank() &&
+        !localKeystorePassword.isNullOrBlank() &&
+        rootProject.file(localKeystorePath).exists()
+val hasReleaseSigning = hasCiSigning || hasLocalSigning
 
 android {
     namespace = "com.example.flexreminder"
@@ -20,20 +41,27 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreBase64 = System.getenv("KEYSTORE_BASE64")
-            if (!keystoreBase64.isNullOrBlank()) {
-                val keystoreFile = File(
-                    project.layout.buildDirectory.get().asFile,
-                    "release.keystore"
-                )
-                keystoreFile.parentFile?.mkdirs()
-                keystoreFile.writeBytes(
-                    Base64.getMimeDecoder().decode(keystoreBase64)
-                )
-                storeFile = keystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("KEY_ALIAS") ?: "flexreminder"
-                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            when {
+                hasCiSigning -> {
+                    val keystoreFile = File(
+                        project.layout.buildDirectory.get().asFile,
+                        "release.keystore"
+                    )
+                    keystoreFile.parentFile?.mkdirs()
+                    keystoreFile.writeBytes(
+                        Base64.getMimeDecoder().decode(ciKeystoreBase64)
+                    )
+                    storeFile = keystoreFile
+                    storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                    keyAlias = System.getenv("KEY_ALIAS") ?: "flexreminder"
+                    keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+                }
+                hasLocalSigning -> {
+                    storeFile = rootProject.file(localKeystorePath!!)
+                    storePassword = localKeystorePassword
+                    keyAlias = localKeyAlias
+                    keyPassword = localKeyPassword
+                }
             }
         }
     }
@@ -54,16 +82,20 @@ android {
     }
 
     buildTypes {
-        release {
-            isMinifyEnabled = false
-            signingConfig = if (!System.getenv("KEYSTORE_BASE64").isNullOrBlank()) {
+        debug {
+            signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
             }
         }
-        debug {
-            signingConfig = signingConfigs.getByName("debug")
+        release {
+            isMinifyEnabled = false
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
@@ -88,4 +120,5 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 }

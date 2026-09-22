@@ -13,14 +13,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * Обрабатывает нажатие кнопки «Выполнено» в уведомлении.
- * Ставит статус COMPLETED (USER) для текущей итерации.
- * Отменяет активные snooze этой итерации.
+ * Обрабатывает нажатие кнопки «Пропустить» в уведомлении (после 5 snooze).
+ * Для прошедшей итерации ставит SKIPPED (SYSTEM), для будущей — SKIPPED (USER).
  */
-class MarkCompletedReceiver : BroadcastReceiver() {
+class MarkSkippedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ACTION_MARK_COMPLETED) return
+        if (intent.action != ACTION_MARK_SKIPPED) return
 
         val id = intent.getLongExtra(AlarmScheduler.EXTRA_ID, -1L)
         if (id < 0) return
@@ -41,18 +40,18 @@ class MarkCompletedReceiver : BroadcastReceiver() {
                 val targetDate = if (dateMillis > 0) {
                     dateMillis
                 } else {
-                    findCurrentIterationDate(reminder, System.currentTimeMillis())
-                        ?: DateUtils.midnight(System.currentTimeMillis())
+                    DateUtils.midnight(System.currentTimeMillis())
                 }
 
                 val now = System.currentTimeMillis()
-                val existing = iterationDao.get(id, targetDate)
+                val isPast = DateUtils.endOfDay(targetDate) < now
 
+                val existing = iterationDao.get(id, targetDate)
                 val iteration = (existing
                     ?: Iteration(reminderId = id, dateMillis = targetDate))
                     .copy(
-                        status = IterationStatus.COMPLETED,
-                        statusSource = StatusSource.USER,
+                        status = IterationStatus.SKIPPED,
+                        statusSource = if (isPast) StatusSource.SYSTEM else StatusSource.USER,
                         statusChangedAt = now,
                         snoozeCount = 0,
                         lastSnoozeAt = null
@@ -60,10 +59,7 @@ class MarkCompletedReceiver : BroadcastReceiver() {
 
                 iterationDao.upsertByDate(iteration)
 
-                // Отменяем возможный отложенный snooze
                 SnoozeReceiver.cancelAllSnoozes(context, id)
-
-                // Пересчитываем следующий будильник
                 AlarmScheduler.schedule(context, reminder)
             } finally {
                 pending.finish()
@@ -71,26 +67,7 @@ class MarkCompletedReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun findCurrentIterationDate(
-        reminder: com.example.flexreminder.data.Reminder,
-        now: Long
-    ): Long? {
-        val todayMidnight = DateUtils.midnight(now)
-        val from = DateUtils.addDays(todayMidnight, -2)
-        val to = DateUtils.addDays(todayMidnight, 1)
-
-        val dates = IterationLogic.generateIterationDates(reminder, from, to)
-        if (dates.isEmpty()) return null
-
-        return dates
-            .map { DateUtils.atTime(it, reminder.hour, reminder.minute) to it }
-            .filter { (trigger, _) -> trigger <= now }
-            .maxByOrNull { (trigger, _) -> trigger }
-            ?.second
-            ?: todayMidnight
-    }
-
     companion object {
-        const val ACTION_MARK_COMPLETED = "com.example.flexreminder.MARK_COMPLETED"
+        const val ACTION_MARK_SKIPPED = "com.example.flexreminder.MARK_SKIPPED"
     }
 }

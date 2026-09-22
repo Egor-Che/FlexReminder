@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
@@ -61,7 +62,8 @@ fun ReminderListScreen(
     vm: ReminderViewModel,
     onAdd: () -> Unit,
     onOpen: (Long) -> Unit,
-    onMark: (Long) -> Unit
+    onMark: (Long) -> Unit,
+    onSettings: () -> Unit
 ) {
     val list by vm.reminders.collectAsStateWithLifecycle()
     val allIterations by vm.observeAllIterations()
@@ -73,7 +75,7 @@ fun ReminderListScreen(
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* результат не важен */ }
+    ) { }
 
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= 33) {
@@ -82,7 +84,19 @@ fun ReminderListScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Напоминания") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Мои напоминания") },
+                actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Настройки"
+                        )
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onAdd) {
                 Icon(Icons.Default.Add, contentDescription = "Добавить")
