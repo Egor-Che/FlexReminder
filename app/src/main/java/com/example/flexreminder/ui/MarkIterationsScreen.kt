@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.data.IterationStatus
+import com.example.flexreminder.ui.theme.AppThemeColors
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -61,6 +65,9 @@ fun MarkIterationsScreen(
 ) {
     val vm: IterationsViewModel = viewModel()
     LaunchedEffect(reminderId) { vm.load(reminderId) }
+
+    val settingsVm: SettingsViewModel = viewModel()
+    val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -132,6 +139,10 @@ fun MarkIterationsScreen(
         return
     }
 
+    val accent = AppThemeColors.accent(appTheme, r.colorIndex)
+    val completeColor = AppThemeColors.completed(appTheme)
+    val skipColor = AppThemeColors.skippedUser(appTheme)
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -152,7 +163,7 @@ fun MarkIterationsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .background(AppThemeColors.screenBackground(appTheme, r.colorIndex))
         ) {
             Row(
                 modifier = Modifier
@@ -160,20 +171,22 @@ fun MarkIterationsScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
+                BulkActionButton(
+                    icon = Icons.Default.Check,
+                    iconTint = completeColor,
+                    line1 = "Выполнить всё",
+                    line2 = "прошедшее",
                     onClick = { showCompleteAllDialog = true },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-                ) {
-                    Text("✅ Выполнить всё\nпрошедшее", style = MaterialTheme.typography.labelSmall)
-                }
-                OutlinedButton(
+                    modifier = Modifier.weight(1f)
+                )
+                BulkActionButton(
+                    icon = Icons.Default.SkipNext,
+                    iconTint = skipColor,
+                    line1 = "Пропустить всё",
+                    line2 = "будущее",
                     onClick = { showSkipAllDialog = true },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-                ) {
-                    Text("⏭️ Пропустить всё\nбудущее", style = MaterialTheme.typography.labelSmall)
-                }
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Row(
@@ -231,6 +244,8 @@ fun MarkIterationsScreen(
                             hour = r.hour,
                             minute = r.minute,
                             isNearest = isNearest,
+                            theme = appTheme,
+                            colorIndex = r.colorIndex,
                             onClickComplete = {
                                 vm.toggleStatus(iteration.dateMillis, IterationStatus.COMPLETED)
                             },
@@ -342,6 +357,50 @@ fun MarkIterationsScreen(
                 TextButton(onClick = { showRollbackDialog = false }) { Text("Отмена") }
             }
         )
+    }
+}
+
+@Composable
+private fun BulkActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: androidx.compose.ui.graphics.Color,
+    line1: String,
+    line2: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(56.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = line1,
+                    style = MaterialTheme.typography.labelMedium,
+                    lineHeight = MaterialTheme.typography.labelMedium.lineHeight
+                )
+                Text(
+                    text = line2,
+                    style = MaterialTheme.typography.labelMedium,
+                    lineHeight = MaterialTheme.typography.labelMedium.lineHeight
+                )
+            }
+        }
     }
 }
 

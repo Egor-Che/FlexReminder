@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.flexreminder.data.AppTheme
+import com.example.flexreminder.ui.theme.AppThemeColors
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -40,6 +42,8 @@ fun ReminderCalendar(
     selectedDates: Set<Long>,
     modifier: Modifier = Modifier,
     readOnly: Boolean = false,
+    theme: AppTheme = AppTheme.PALETTE,
+    colorIndex: Int? = null,
     onDateToggle: (Long) -> Unit = {},
     initialMonthMillis: Long = System.currentTimeMillis()
 ) {
@@ -68,6 +72,12 @@ fun ReminderCalendar(
 
     val weekDays = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
 
+    val highlightColor = AppThemeColors.calendarHighlight(theme, colorIndex)
+    val onHighlightColor = Color.White
+    val todayColor = AppThemeColors.accent(theme, colorIndex)
+    val textColor = AppThemeColors.cardContentColor(theme)
+    val secondaryColor = AppThemeColors.cardContentColorSecondary(theme)
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -84,12 +94,17 @@ fun ReminderCalendar(
                 displayYear = c.get(Calendar.YEAR)
                 displayMonth = c.get(Calendar.MONTH)
             }) {
-                Icon(Icons.Default.ChevronLeft, contentDescription = "Предыдущий месяц")
+                Icon(
+                    Icons.Default.ChevronLeft,
+                    contentDescription = "Предыдущий месяц",
+                    tint = textColor
+                )
             }
             Text(
                 text = monthTitle,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = textColor
             )
             IconButton(onClick = {
                 val c = Calendar.getInstance().apply {
@@ -101,7 +116,11 @@ fun ReminderCalendar(
                 displayYear = c.get(Calendar.YEAR)
                 displayMonth = c.get(Calendar.MONTH)
             }) {
-                Icon(Icons.Default.ChevronRight, contentDescription = "Следующий месяц")
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Следующий месяц",
+                    tint = textColor
+                )
             }
         }
 
@@ -114,7 +133,7 @@ fun ReminderCalendar(
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = secondaryColor
                 )
             }
         }
@@ -141,6 +160,10 @@ fun ReminderCalendar(
                             dayMillis = dayMillis,
                             isSelected = isSelected,
                             readOnly = readOnly,
+                            highlightColor = highlightColor,
+                            onHighlightColor = onHighlightColor,
+                            todayColor = todayColor,
+                            defaultTextColor = textColor,
                             onClick = { onDateToggle(dayMillis) },
                             modifier = Modifier.weight(1f)
                         )
@@ -156,6 +179,10 @@ private fun DayCell(
     dayMillis: Long,
     isSelected: Boolean,
     readOnly: Boolean,
+    highlightColor: Color,
+    onHighlightColor: Color,
+    todayColor: Color,
+    defaultTextColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -182,7 +209,7 @@ private fun DayCell(
             .then(if (!readOnly) Modifier.clickable { onClick() } else Modifier)
             .background(
                 when {
-                    isSelected -> MaterialTheme.colorScheme.primary
+                    isSelected -> highlightColor
                     else -> Color.Transparent
                 }
             ),
@@ -191,9 +218,9 @@ private fun DayCell(
         Text(
             text = day.toString(),
             color = when {
-                isSelected -> MaterialTheme.colorScheme.onPrimary
-                isToday -> MaterialTheme.colorScheme.primary
-                else -> MaterialTheme.colorScheme.onSurface
+                isSelected -> onHighlightColor
+                isToday -> todayColor
+                else -> defaultTextColor
             },
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal
@@ -201,11 +228,6 @@ private fun DayCell(
     }
 }
 
-/**
- * Возвращает 42 ячейки (6 недель) для месяца.
- * null — пустая ячейка (до первого дня месяца или после последнего).
- * Первая ячейка — понедельник.
- */
 private fun buildMonthCells(year: Int, month: Int): List<Long?> {
     val firstDay = Calendar.getInstance().apply {
         set(Calendar.YEAR, year)
@@ -217,8 +239,6 @@ private fun buildMonthCells(year: Int, month: Int): List<Long?> {
         set(Calendar.MILLISECOND, 0)
     }
 
-    // Calendar.DAY_OF_WEEK: 1=Sun, 2=Mon, ..., 7=Sat
-    // Хотим понедельник = 0, ..., воскресенье = 6
     val firstWeekDayRaw = firstDay.get(Calendar.DAY_OF_WEEK)
     val firstWeekDay = (firstWeekDayRaw + 5) % 7
 

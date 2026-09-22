@@ -1,5 +1,6 @@
 package com.example.flexreminder.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -14,8 +16,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +30,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -37,13 +44,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.data.AppDatabase
+import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Reminder
 import com.example.flexreminder.data.ScheduleMode
+import com.example.flexreminder.ui.theme.AppThemeColors
+import com.example.flexreminder.ui.theme.ReminderPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -60,6 +73,9 @@ fun EditReminderScreen(
 ) {
     val ctx = LocalContext.current
     val isNew = reminderId <= 0L
+
+    val settingsVm: SettingsViewModel = viewModel()
+    val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
 
     var loaded by remember { mutableStateOf(isNew) }
     var title by remember { mutableStateOf("") }
@@ -80,6 +96,8 @@ fun EditReminderScreen(
     var minute by remember { mutableStateOf(0) }
     var enabled by remember { mutableStateOf(true) }
     var silent by remember { mutableStateOf(false) }
+
+    var colorIndex by remember { mutableStateOf<Int?>(null) }
 
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
@@ -103,6 +121,7 @@ fun EditReminderScreen(
                 minute = r.minute
                 enabled = r.enabled
                 silent = r.silent
+                colorIndex = r.colorIndex
                 if (r.mode == ScheduleMode.INTERVAL) {
                     lastGeneratedKey = intervalKey(
                         r.daysOn, r.daysOff, r.startDate, r.endDate
@@ -116,6 +135,9 @@ fun EditReminderScreen(
     val df = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
     val daysOn = daysOnText.toIntOrNull()?.coerceAtLeast(1) ?: 1
     val daysOff = daysOffText.toIntOrNull()?.coerceAtLeast(0) ?: 0
+
+    val accentColor = AppThemeColors.editorAccent(appTheme, colorIndex)
+    val onAccent = AppThemeColors.onAccentColor()
 
     val canSave = title.isNotBlank() && loaded && when (mode) {
         ScheduleMode.INTERVAL -> endDate == null || endDate!! >= startDate
@@ -150,6 +172,7 @@ fun EditReminderScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .background(AppThemeColors.screenBackground(appTheme, colorIndex))
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
@@ -176,7 +199,11 @@ fun EditReminderScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            TabRow(selectedTabIndex = mode.ordinal) {
+            TabRow(
+                selectedTabIndex = mode.ordinal,
+                containerColor = Color.Transparent,
+                contentColor = accentColor
+            ) {
                 Tab(
                     selected = mode == ScheduleMode.INTERVAL,
                     onClick = {
@@ -205,7 +232,13 @@ fun EditReminderScreen(
                             mode = ScheduleMode.INTERVAL
                         }
                     },
-                    text = { Text("Интервалы") }
+                    text = {
+                        Text(
+                            "Интервалы",
+                            color = if (mode == ScheduleMode.INTERVAL) accentColor
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 )
                 Tab(
                     selected = mode == ScheduleMode.CUSTOM_DATES,
@@ -221,7 +254,13 @@ fun EditReminderScreen(
                             mode = ScheduleMode.CUSTOM_DATES
                         }
                     },
-                    text = { Text("Конкретные даты") }
+                    text = {
+                        Text(
+                            "Конкретные даты",
+                            color = if (mode == ScheduleMode.CUSTOM_DATES) accentColor
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 )
             }
 
@@ -235,6 +274,7 @@ fun EditReminderScreen(
                         daysOnText = daysOnText,
                         daysOffText = daysOffText,
                         df = df,
+                        accentColor = accentColor,
                         onShowStartPicker = { showStartPicker = true },
                         onShowEndPicker = { showEndPicker = true },
                         onClearEnd = { endDate = null },
@@ -247,6 +287,9 @@ fun EditReminderScreen(
                 ScheduleMode.CUSTOM_DATES -> {
                     CustomDatesForm(
                         selectedDates = customDates,
+                        theme = appTheme,
+                        colorIndex = colorIndex,
+                        accentColor = accentColor,
                         onToggle = { d ->
                             customDates = if (customDates.contains(d)) {
                                 customDates - d
@@ -269,13 +312,47 @@ fun EditReminderScreen(
                 onClick = { showTimePicker = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(String.format(Locale.getDefault(), "Время: %02d:%02d", hour, minute))
+                Text(
+                    String.format(Locale.getDefault(), "Время: %02d:%02d", hour, minute),
+                    color = accentColor
+                )
+            }
+
+            if (appTheme == AppTheme.PALETTE) {
+                Spacer(Modifier.height(20.dp))
+
+                Text("Цвет напоминания", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+
+                val selectedColorName = ReminderPalette.get(colorIndex)?.name
+                Text(
+                    text = if (selectedColorName == null) {
+                        "Не выбран"
+                    } else {
+                        "Выбран: $selectedColorName"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+
+                ColorPalettePicker(
+                    selectedIndex = colorIndex,
+                    onPick = { colorIndex = it }
+                )
             }
 
             Spacer(Modifier.height(16.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = enabled, onCheckedChange = { enabled = it })
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { enabled = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = onAccent,
+                        checkedTrackColor = accentColor
+                    )
+                )
                 Spacer(Modifier.width(8.dp))
                 Text("Включено")
             }
@@ -286,14 +363,31 @@ fun EditReminderScreen(
                 Switch(
                     checked = if (enabled) !silent else false,
                     onCheckedChange = { soundOn -> silent = !soundOn },
-                    enabled = enabled
+                    enabled = enabled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = onAccent,
+                        checkedTrackColor = accentColor
+                    )
                 )
                 Spacer(Modifier.width(8.dp))
+                Icon(
+                    imageVector = if (!enabled || silent)
+                        Icons.Default.VolumeOff
+                    else
+                        Icons.Default.VolumeUp,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (!enabled)
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    else
+                        MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.width(6.dp))
                 Text(
                     text = when {
                         !enabled -> "Звук"
-                        silent -> "🔇 Без звука"
-                        else -> "🔔 Со звуком"
+                        silent -> "Без звука"
+                        else -> "Со звуком"
                     }
                 )
             }
@@ -322,12 +416,17 @@ fun EditReminderScreen(
                         hour = hour,
                         minute = minute,
                         enabled = enabled,
-                        silent = if (enabled) silent else false
+                        silent = if (enabled) silent else false,
+                        colorIndex = colorIndex
                     )
                     vm.save(r) { onDone() }
                 },
                 enabled = canSave,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = accentColor,
+                    contentColor = onAccent
+                )
             ) {
                 Text("Сохранить")
             }
@@ -339,6 +438,8 @@ fun EditReminderScreen(
     DatePickerDialogWrapper(
         show = showStartPicker,
         initialMillis = startDate,
+        theme = appTheme,
+        colorIndex = colorIndex,
         onDismiss = { showStartPicker = false },
         onPicked = { startDate = it }
     )
@@ -346,6 +447,8 @@ fun EditReminderScreen(
     DatePickerDialogWrapper(
         show = showEndPicker,
         initialMillis = endDate ?: startDate,
+        theme = appTheme,
+        colorIndex = colorIndex,
         onDismiss = { showEndPicker = false },
         onPicked = { endDate = it }
     )
@@ -354,6 +457,8 @@ fun EditReminderScreen(
         show = showTimePicker,
         hour = hour,
         minute = minute,
+        theme = appTheme,
+        colorIndex = colorIndex,
         onDismiss = { showTimePicker = false },
         onPicked = { h, m ->
             hour = h
@@ -369,6 +474,7 @@ private fun IntervalForm(
     daysOnText: String,
     daysOffText: String,
     df: SimpleDateFormat,
+    accentColor: Color,
     onShowStartPicker: () -> Unit,
     onShowEndPicker: () -> Unit,
     onClearEnd: () -> Unit,
@@ -382,7 +488,7 @@ private fun IntervalForm(
             onClick = onShowStartPicker,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Начало: ${df.format(Date(startDate))}")
+            Text("Начало: ${df.format(Date(startDate))}", color = accentColor)
         }
 
         Spacer(Modifier.height(8.dp))
@@ -392,14 +498,15 @@ private fun IntervalForm(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                if (endDate == null) "Окончание: бессрочно"
-                else "Окончание: ${df.format(Date(endDate))}"
+                text = if (endDate == null) "Окончание: бессрочно"
+                else "Окончание: ${df.format(Date(endDate))}",
+                color = accentColor
             )
         }
 
         if (endDate != null) {
             TextButton(onClick = onClearEnd) {
-                Text("Убрать дату окончания (бессрочно)")
+                Text("Убрать дату окончания (бессрочно)", color = accentColor)
             }
         }
 
@@ -430,7 +537,7 @@ private fun IntervalForm(
         Text(
             text = "Итого: ${formatPattern(daysOn, daysOff)} (цикл ${daysOn + daysOff} дн.)",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = accentColor
         )
     }
 }
@@ -438,6 +545,9 @@ private fun IntervalForm(
 @Composable
 private fun CustomDatesForm(
     selectedDates: Set<Long>,
+    theme: AppTheme,
+    colorIndex: Int?,
+    accentColor: Color,
     onToggle: (Long) -> Unit,
     onClearAll: () -> Unit
 ) {
@@ -445,23 +555,31 @@ private fun CustomDatesForm(
         Text(
             text = "Выбрано: ${selectedDates.size} шт.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = accentColor
         )
 
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Нажмите на дату, чтобы добавить или убрать её. Можно переключаться между месяцами — уже выбранные даты сохраняются.",
+            text = "Нажмите на дату, чтобы добавить или убрать её. " +
+                    "Можно переключаться между месяцами — уже выбранные даты сохраняются.",
             style = MaterialTheme.typography.bodySmall
         )
 
         Spacer(Modifier.height(8.dp))
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = AppThemeColors.viewCardBackground(theme, colorIndex)
+            )
+        ) {
             Column(Modifier.padding(8.dp)) {
                 ReminderCalendar(
                     selectedDates = selectedDates,
                     readOnly = false,
+                    theme = theme,
+                    colorIndex = colorIndex,
                     onDateToggle = onToggle,
                     initialMonthMillis = selectedDates.minOrNull()
                         ?: System.currentTimeMillis()
@@ -472,7 +590,7 @@ private fun CustomDatesForm(
         if (selectedDates.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onClearAll) {
-                Text("Очистить все даты")
+                Text("Очистить все даты", color = accentColor)
             }
         }
     }

@@ -25,9 +25,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Iteration
 import com.example.flexreminder.data.IterationStatus
 import com.example.flexreminder.data.StatusSource
+import com.example.flexreminder.ui.theme.AppThemeColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -42,6 +44,8 @@ fun IterationRow(
     hour: Int,
     minute: Int,
     isNearest: Boolean,
+    theme: AppTheme,
+    colorIndex: Int?,
     onClickComplete: () -> Unit,
     onClickSkip: () -> Unit,
     onBlockedBySystem: () -> Unit
@@ -51,12 +55,12 @@ fun IterationRow(
     val isSystemStatus = status == IterationStatus.SKIPPED && source == StatusSource.SYSTEM
 
     val rowBg = if (isNearest)
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        AppThemeColors.accent(theme, colorIndex).copy(alpha = 0.15f)
     else
         MaterialTheme.colorScheme.surface
 
     val borderMod = if (isNearest) {
-        Modifier.border(1.dp, MaterialTheme.colorScheme.primary, CircleShape)
+        Modifier.border(1.dp, AppThemeColors.accent(theme, colorIndex), CircleShape)
     } else Modifier
 
     Row(
@@ -75,17 +79,25 @@ fun IterationRow(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isNearest) FontWeight.Bold else FontWeight.Normal
             )
-            Text(
-                text = "${String.format(Locale.getDefault(), "%02d:%02d", hour, minute)}" +
-                        statusLabelSuffix(status, source),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = String.format(Locale.getDefault(), "%02d:%02d", hour, minute),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (status != IterationStatus.PENDING) {
+                    Spacer(Modifier.width(8.dp))
+                    IterationStatusLabel(
+                        iteration = iteration,
+                        theme = theme
+                    )
+                }
+            }
         }
 
         StatusIconButton(
             isActive = status == IterationStatus.COMPLETED,
-            activeColor = CompletedColor,
+            activeColor = AppThemeColors.completed(theme),
             isCheck = true,
             contentDescription = "Выполнено",
             onClick = onClickComplete
@@ -93,7 +105,10 @@ fun IterationRow(
         Spacer(Modifier.width(8.dp))
         StatusIconButton(
             isActive = status == IterationStatus.SKIPPED,
-            activeColor = skippedColor(source),
+            activeColor = if (source == StatusSource.SYSTEM)
+                AppThemeColors.skippedSystem(theme)
+            else
+                AppThemeColors.skippedUser(theme),
             isCheck = false,
             contentDescription = "Пропустить",
             onClick = {
@@ -102,20 +117,6 @@ fun IterationRow(
         )
     }
 }
-
-private fun statusLabelSuffix(status: IterationStatus, source: StatusSource?): String = when {
-    status == IterationStatus.COMPLETED -> "  ✅ Выполнено"
-    status == IterationStatus.SKIPPED && source == StatusSource.USER -> "  ⏭️ Пропущено (вами)"
-    status == IterationStatus.SKIPPED && source == StatusSource.SYSTEM -> "  ❌ Пропущено"
-    else -> ""
-}
-
-val CompletedColor = Color(0xFF2E7D32)
-val SkippedUserColor = Color(0xFFE6A100)
-val SkippedSystemColor = Color(0xFFC62828)
-
-fun skippedColor(source: StatusSource?): Color =
-    if (source == StatusSource.SYSTEM) SkippedSystemColor else SkippedUserColor
 
 @Composable
 private fun StatusIconButton(

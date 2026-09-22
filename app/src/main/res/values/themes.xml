@@ -1,4 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Базовый стиль для диалогов -->
+    <style name="DialogThemeBase" parent="android:Theme.Material.Light.Dialog">
+        <!-- placeholder, переопределяется в наследниках -->
+    </style>
+
+    <!-- Монохром -->
+    <style name="DialogThemeMonochrome" parent="DialogThemeBase">
+        <item name="android:colorAccent">#4A4A4A</item>
+        <item name="android:colorPrimary">#4A4A4A</item>
+        <item name="android:colorPrimaryDark">#333333</item>
+    </style>
+
+    <!-- Нейтральный серый для Палитры (когда цвет не выбран) -->
+    <style name="DialogThemeNeutral" parent="DialogThemeBase">
+        <item name="android:colorAccent">#6E6E6E</item>
+        <item name="android:colorPrimary">#6E6E6E</item>
+        <item name="android:colorPrimaryDark">#4D4D4D</item>
+    </style>
+
+    <!-- 16 цветов палитры (тёмные оттенки для читаемости) -->
+    <style name="DialogThemeColor1" parent="DialogThemeBase">
+        <item name="android:colorAccent">#7E4D3F</item>
+        <item name="android:colorPrimary">#7E4D3F</item>
+        <item name="android:colorPrimaryDark">#5E392F</item>
+    </style>
+    <style name="DialogThemeColor2" parent="DialogThemeBase">
+        <item name="android:colorAccent">#815749</item>
+        <item name="android:colorPrimary">#815749</item>
+        <item name="android:colorPrimaryDark">#613F36</item>
+    </style>
+    <style name="DialogThemeColor3" parent="DialogThemeBase">
+        <item name="android:colorAccent">#85624D</item>
+        <item name="android:colorPrimary">#85624D</item>
+        <item name="android:colorPrimaryDark">#63473A</item>
+    </style>
+    <style name="DialogThemeColor4" parent="DialogThemeBase">
+        <item name="android:colorAccent">#817050</item>
+        <item name="android:colorPrimary">#817050</item>
+        <item name="android:colorPrimaryDark">#60543B</item>
+    </style>
+    <style name="DialogThemeColor5" parent="DialogThemeBase">
+        <item name="android:colorAccent">#817A54</item>
+        <item name="android:colorPrimary">#817A54</item>
+        <item name="android:colorPrimaryDark">#605C3E</item>
+    </style>
+    <style name="DialogThemeColor6" parent="DialogThemeBase">
+        <item name="android:colorAccent">#777E50</item>
+        <item name="android:colorPrimary">#777E50</item>
+        <item name="android:colorPrimaryDark">#595F3C</item>
+    </style>
+    <style name="DialogThemeColor7" parent="DialogThemeBase">
+        <item name="android:colorAccent">#657E54</item>
+        <item name="android:colorPrimary">#657E54</item>
+        <item name="android:colorPrimaryDark">#4C5F3F</item>
+    </style>
+    <style name="DialogThemeColor8" parent="DialogThemeBase">
+        <item name="android:colorAccent">#547E62</item>
+        <item name="android:colorPrimary">#547E62</item>
+        <item name="android:colorPrimaryDark">#3F5F4A</item>
+    </style>
+    <style name="DialogThemeColor9" parent="DialogThemeBase">
+        <item name="android:colorAccent">#507E77</item>
+        <item name="android:colorPrimary">#507E77</item>
+        <item name="android:colorPrimaryDark">#3C5F59</item>
+    </style>
+    <style name="DialogThemeColor10" parent="DialogThemeBase">
+        <item name="android:colorAccent">#547781</item>
+        <item name="android:colorPrimary">#547781</item>
+        <item name="android:colorPrimaryDark">#3F5A61</item>
+    </style>
+    <style name="DialogThemeColor11" parent="DialogThemeBase">
+        <item name="android:colorAccent">#576C85</item>
+        <item name="android:colorPrimary">#576C85</item>
+        <item name="android:colorPrimaryDark">#415164</item>
+    </style>
+    <style name="DialogThemeColor12" parent="DialogThemeBase">
+        <item name="android:colorAccent">#5E6281</item>
+        <item name="android:colorPrimary">#5E6281</item>
+        <item name="android:colorPrimaryDark">#474A61</item>
+    </style>
+    <style name="DialogThemeColor13" parent="DialogThemeBase">
+        <item name="android:colorAccent">#6C6281</item>
+        <item name="android:colorPrimary">#6C6281</item>
+        <item name="android:colorPrimaryDark">#514A61</item>
+    </style>
+    <style name="DialogThemeColor14" parent="DialogThemeBase">
+        <item name="android:colorAccent">#7A6281</item>
+        <item name="android:colorPrimary">#7A6281</item>
+        <item name="android:colorPrimaryDark">#5C4A61</item>
+    </style>
+    <style name="DialogThemeColor15" parent="DialogThemeBase">
+        <item name="android:colorAccent">#816273</item>
+        <item name="android:colorPrimary">#816273</item>
+        <item name="android:colorPrimaryDark">#614A56</item>
+    </style>
+    <style name="DialogThemeColor16" parent="DialogThemeBase">
+        <item name="android:colorAccent">#856269</item>
+        <item name="android:colorPrimary">#856269</item>
+        <item name="android:colorPrimaryDark">#634A4F</item>
+    </style>
 </resources>

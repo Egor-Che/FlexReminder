@@ -38,5 +38,12 @@ data class Reminder(
     val hour: Int = 9,
     val minute: Int = 0,
     val enabled: Boolean = true,
-    val silent: Boolean = false
+    val silent: Boolean = false,
+
+    /**
+     * Индекс цвета в палитре (0..15).
+     * null = цвет не выбран (белый). Актуально только в теме «Палитра».
+     * В теме «Монохром» игнорируется.
+     */
+    val colorIndex: Int? = null
 )

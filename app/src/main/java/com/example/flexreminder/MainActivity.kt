@@ -4,10 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -21,12 +23,15 @@ import com.example.flexreminder.alarm.AlarmScheduler
 import com.example.flexreminder.alarm.AutoSkipWorker
 import com.example.flexreminder.alarm.Notifications
 import com.example.flexreminder.data.AppDatabase
+import com.example.flexreminder.data.AppTheme
+import com.example.flexreminder.data.SettingsRepository
 import com.example.flexreminder.ui.EditReminderScreen
 import com.example.flexreminder.ui.MarkIterationsScreen
 import com.example.flexreminder.ui.ReminderListScreen
 import com.example.flexreminder.ui.ReminderViewModel
 import com.example.flexreminder.ui.SettingsScreen
 import com.example.flexreminder.ui.ViewReminderScreen
+import com.example.flexreminder.ui.theme.FlexReminderTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -51,7 +56,12 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MaterialTheme {
+            val settingsRepo = remember { SettingsRepository.get(this) }
+            val appTheme by settingsRepo.appTheme.collectAsStateWithLifecycle(
+                initialValue = AppTheme.PALETTE
+            )
+
+            FlexReminderTheme(theme = appTheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppNav()
                 }

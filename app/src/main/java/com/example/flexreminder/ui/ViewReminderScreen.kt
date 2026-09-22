@@ -1,5 +1,6 @@
 package com.example.flexreminder.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -14,14 +16,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -29,12 +36,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.alarm.ReminderLogic
+import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Reminder
 import com.example.flexreminder.data.ScheduleMode
+import com.example.flexreminder.ui.theme.AppThemeColors
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -50,6 +61,9 @@ fun ViewReminderScreen(
 ) {
     val reminderFlow = remember(reminderId) { vm.observeById(reminderId) }
     val reminder by reminderFlow.collectAsStateWithLifecycle(initialValue = null)
+
+    val settingsVm: SettingsViewModel = viewModel()
+    val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
 
     val dfShort = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
     val dfFull = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()) }
@@ -90,130 +104,170 @@ fun ViewReminderScreen(
             return@Scaffold
         }
 
+        val contentColor = AppThemeColors.cardContentColor(appTheme)
+        val secondaryColor = AppThemeColors.cardContentColorSecondary(appTheme)
+        val accentColor = AppThemeColors.accent(appTheme, r.colorIndex)
+        val cardBg = AppThemeColors.viewCardBackground(appTheme, r.colorIndex)
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .background(AppThemeColors.screenBackground(appTheme, r.colorIndex))
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            Text(r.title, style = MaterialTheme.typography.headlineSmall)
-
-            if (r.notes.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(r.notes, style = MaterialTheme.typography.bodyMedium)
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "Время: " + String.format(Locale.getDefault(), "%02d:%02d", r.hour, r.minute),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(Modifier.width(16.dp))
-                Text(
-                    if (r.silent) "🔇 без звука" else "🔔 со звуком",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = when (r.mode) {
-                    ScheduleMode.INTERVAL -> formatPattern(r.daysOn, r.daysOff)
-                    ScheduleMode.CUSTOM_DATES -> "Конкретные даты: ${r.customDates.size} шт."
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            if (r.mode == ScheduleMode.INTERVAL) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Период: с ${dfShort.format(Date(r.startDate))}" +
-                            (r.endDate?.let { " по ${dfShort.format(Date(it))}" } ?: " (бессрочно)"),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            } else {
-                val sorted = r.customDates.sorted()
-                if (sorted.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = cardBg)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Первая: ${dfShort.format(Date(sorted.first()))}, " +
-                                "последняя: ${dfShort.format(Date(sorted.last()))}",
-                        style = MaterialTheme.typography.bodySmall
+                        r.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = contentColor
                     )
+
+                    if (r.notes.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            r.notes,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = secondaryColor
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Время: " + String.format(
+                                Locale.getDefault(), "%02d:%02d", r.hour, r.minute
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = contentColor
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        SoundLabel(silent = r.silent, color = contentColor)
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        text = when (r.mode) {
+                            ScheduleMode.INTERVAL -> formatPattern(r.daysOn, r.daysOff)
+                            ScheduleMode.CUSTOM_DATES -> "Конкретные даты: ${r.customDates.size} шт."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = accentColor
+                    )
+
+                    if (r.mode == ScheduleMode.INTERVAL) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Период: с ${dfShort.format(Date(r.startDate))}" +
+                                    (r.endDate?.let { " по ${dfShort.format(Date(it))}" }
+                                        ?: " (бессрочно)"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = secondaryColor
+                        )
+                    } else {
+                        val sorted = r.customDates.sorted()
+                        if (sorted.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Первая: ${dfShort.format(Date(sorted.first()))}, " +
+                                        "последняя: ${dfShort.format(Date(sorted.last()))}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = secondaryColor
+                            )
+                        }
+                    }
+
+                    val next = remember(r) { ReminderLogic.nextTriggerTime(r) }
+                    if (r.enabled && next != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Следующее: ${dfFull.format(Date(next))}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = accentColor
+                        )
+                    } else if (r.enabled) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Период завершён — отредактируйте расписание",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = AppThemeColors.skippedSystem(appTheme)
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Switch(
+                            checked = r.enabled,
+                            onCheckedChange = { vm.toggle(r) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = accentColor,
+                                checkedTrackColor = accentColor.copy(alpha = 0.5f)
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Включено", color = contentColor)
+
+                        Spacer(Modifier.width(24.dp))
+
+                        Switch(
+                            checked = if (r.enabled) !r.silent else false,
+                            onCheckedChange = { soundOn -> vm.setSilent(r, !soundOn) },
+                            enabled = r.enabled,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = accentColor,
+                                checkedTrackColor = accentColor.copy(alpha = 0.5f)
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        SoundLabel(
+                            silent = r.silent,
+                            enabled = r.enabled,
+                            color = contentColor
+                        )
+                    }
                 }
             }
 
-            val next = remember(r) { ReminderLogic.nextTriggerTime(r) }
-            if (r.enabled && next != null) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Следующее: ${dfFull.format(Date(next))}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            } else if (r.enabled) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Период завершён — отредактируйте расписание",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Switch(checked = r.enabled, onCheckedChange = { vm.toggle(r) })
-                Spacer(Modifier.width(8.dp))
-                Text("Включено")
-
-                Spacer(Modifier.width(24.dp))
-
-                Switch(
-                    checked = if (r.enabled) !r.silent else false,
-                    onCheckedChange = { soundOn -> vm.setSilent(r, !soundOn) },
-                    enabled = r.enabled
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = when {
-                        !r.enabled -> "Звук"
-                        r.silent -> "🔇 Без звука"
-                        else -> "🔔 Со звуком"
-                    }
-                )
-            }
-
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = if (r.mode == ScheduleMode.INTERVAL) "Расписание на месяц" else "Выбранные даты",
-                style = MaterialTheme.typography.titleMedium
+                text = if (r.mode == ScheduleMode.INTERVAL) "Расписание на месяц"
+                else "Выбранные даты",
+                style = MaterialTheme.typography.titleMedium,
+                color = contentColor
             )
 
             Spacer(Modifier.height(8.dp))
 
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = cardBg)
+            ) {
                 Column(Modifier.padding(8.dp)) {
                     when (r.mode) {
                         ScheduleMode.CUSTOM_DATES -> {
                             ReminderCalendar(
                                 selectedDates = r.customDates,
                                 readOnly = true,
+                                theme = appTheme,
+                                colorIndex = r.colorIndex,
                                 initialMonthMillis = r.customDates.minOrNull()
                                     ?: System.currentTimeMillis()
                             )
                         }
                         ScheduleMode.INTERVAL -> {
-                            IntervalPreviewCalendar(r)
+                            IntervalPreviewCalendar(r, appTheme)
                         }
                     }
                 }
@@ -223,7 +277,11 @@ fun ViewReminderScreen(
 
             Button(
                 onClick = onEdit,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = accentColor,
+                    contentColor = Color.White
+                )
             ) {
                 Icon(Icons.Default.Edit, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
@@ -236,7 +294,32 @@ fun ViewReminderScreen(
 }
 
 @Composable
-private fun IntervalPreviewCalendar(r: Reminder) {
+private fun SoundLabel(
+    silent: Boolean,
+    enabled: Boolean = true,
+    color: Color
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = if (silent || !enabled)
+                Icons.Default.VolumeOff
+            else
+                Icons.Default.VolumeUp,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = if (silent || !enabled) "Без звука" else "Со звуком",
+            style = MaterialTheme.typography.bodyMedium,
+            color = color
+        )
+    }
+}
+
+@Composable
+private fun IntervalPreviewCalendar(r: Reminder, theme: AppTheme) {
     val activeDates = remember(r) {
         val set = mutableSetOf<Long>()
 
@@ -269,6 +352,8 @@ private fun IntervalPreviewCalendar(r: Reminder) {
     ReminderCalendar(
         selectedDates = activeDates,
         readOnly = true,
+        theme = theme,
+        colorIndex = r.colorIndex,
         initialMonthMillis = System.currentTimeMillis()
     )
 }

@@ -3,6 +3,7 @@ package com.example.flexreminder.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,6 +17,8 @@ enum class SnoozeField { SHORT, LONG }
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = SettingsRepository.get(app)
+
+    // ---------- Snooze ----------
 
     val snoozeShort: StateFlow<Int> = repo.snoozeShortMinutes
         .stateIn(
@@ -31,7 +34,34 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             SettingsRepository.DEFAULT_SNOOZE_LONG
         )
 
-    // ---- Состояние диалога редактирования ----
+    // ---------- Тема ----------
+
+    val appTheme: StateFlow<AppTheme> = repo.appTheme
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            SettingsRepository.DEFAULT_THEME
+        )
+
+    private val _themeDialogOpen = MutableStateFlow(false)
+    val themeDialogOpen: StateFlow<Boolean> = _themeDialogOpen.asStateFlow()
+
+    fun openThemeDialog() {
+        _themeDialogOpen.value = true
+    }
+
+    fun closeThemeDialog() {
+        _themeDialogOpen.value = false
+    }
+
+    fun setTheme(theme: AppTheme) {
+        viewModelScope.launch {
+            repo.setAppTheme(theme)
+            _themeDialogOpen.value = false
+        }
+    }
+
+    // ---------- Диалог snooze ----------
 
     private val _editingField = MutableStateFlow<SnoozeField?>(null)
     val editingField: StateFlow<SnoozeField?> = _editingField.asStateFlow()
@@ -53,7 +83,6 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateEditingValue(newValue: String) {
-        // только цифры, максимум 3 символа (до 720)
         _editingValue.value = newValue.filter { it.isDigit() }.take(3)
     }
 
