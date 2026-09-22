@@ -33,13 +33,44 @@ class Converters {
             ScheduleMode.INTERVAL
         }
     }
+
+    @TypeConverter
+    fun fromIterationStatus(status: IterationStatus?): String =
+        (status ?: IterationStatus.PENDING).name
+
+    @TypeConverter
+    fun toIterationStatus(value: String?): IterationStatus {
+        return try {
+            IterationStatus.valueOf(value ?: IterationStatus.PENDING.name)
+        } catch (_: Exception) {
+            IterationStatus.PENDING
+        }
+    }
+
+    @TypeConverter
+    fun fromStatusSource(source: StatusSource?): String? = source?.name
+
+    @TypeConverter
+    fun toStatusSource(value: String?): StatusSource? {
+        if (value == null) return null
+        return try {
+            StatusSource.valueOf(value)
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
 
-@Database(entities = [Reminder::class], version = 3, exportSchema = false)
+@Database(
+    entities = [Reminder::class, Iteration::class],
+    version = 4,
+    exportSchema = false
+)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun reminderDao(): ReminderDao
+    abstract fun iterationDao(): IterationDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -90,6 +121,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE iterations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        reminderId INTEGER NOT NULL,
+                        dateMillis INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        statusSource TEXT,
+                        statusChangedAt INTEGER,
+                        firedAt INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX index_iterations_reminderId_dateMillis " +
+                            "ON iterations (reminderId, dateMillis)"
+                )
+            }
+        }
+
         fun get(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -97,7 +150,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "reminders.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { INSTANCE = it }
             }

@@ -15,10 +15,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.flexreminder.alarm.AlarmScheduler
+import com.example.flexreminder.alarm.AutoSkipWorker
 import com.example.flexreminder.alarm.Notifications
 import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.ui.EditReminderScreen
+import com.example.flexreminder.ui.MarkIterationsScreen
 import com.example.flexreminder.ui.ReminderListScreen
 import com.example.flexreminder.ui.ReminderViewModel
 import com.example.flexreminder.ui.ViewReminderScreen
@@ -31,7 +35,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Notifications.ensureChannels(this)
 
-        // При запуске приложения перепланируем все активные будильники
+        // Периодический автопропуск раз в 3 часа
+        AutoSkipWorker.schedule(this)
+
+        // Немедленная проверка автопропуска при запуске
+        WorkManager.getInstance(this).enqueue(
+            OneTimeWorkRequestBuilder<AutoSkipWorker>().build()
+        )
+
+        // Перепланирование активных будильников с учётом отметок
         lifecycleScope.launch(Dispatchers.IO) {
             val dao = AppDatabase.get(this@MainActivity).reminderDao()
             dao.getEnabled().forEach { r ->
@@ -61,7 +73,8 @@ fun AppNav() {
             ReminderListScreen(
                 vm = vm,
                 onAdd = { nav.navigate("edit/-1") },
-                onOpen = { id -> nav.navigate("view/$id") }
+                onOpen = { id -> nav.navigate("view/$id") },
+                onMark = { id -> nav.navigate("mark/$id") }
             )
         }
 
@@ -89,6 +102,17 @@ fun AppNav() {
                 vm = vm,
                 reminderId = id,
                 onDone = { nav.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "mark/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.LongType })
+        ) { entry ->
+            val id = entry.arguments?.getLong("id") ?: -1L
+            MarkIterationsScreen(
+                reminderId = id,
+                onBack = { nav.popBackStack() }
             )
         }
     }

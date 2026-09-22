@@ -78,6 +78,7 @@ object Notifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val markCompleted = buildMarkCompletedPI(context, id, title, text, silent)
         val snooze5 = buildSnoozePI(context, id, title, text, silent, 5)
         val snooze10 = buildSnoozePI(context, id, title, text, silent, 10)
 
@@ -94,6 +95,11 @@ object Notifications {
             .setAutoCancel(true)
             .setContentIntent(contentPi)
             .addAction(
+                android.R.drawable.checkbox_on_background,
+                "Выполнено",
+                markCompleted
+            )
+            .addAction(
                 android.R.drawable.ic_menu_recent_history,
                 "Отложить 5 мин",
                 snooze5
@@ -109,8 +115,31 @@ object Notifications {
         try {
             NotificationManagerCompat.from(context).notify(id.toInt(), builder.build())
         } catch (_: SecurityException) {
-            // нет разрешения на уведомления — молча выходим
+            // нет разрешения — молча выходим
         }
+    }
+
+    private fun buildMarkCompletedPI(
+        context: Context,
+        id: Long,
+        title: String,
+        notes: String,
+        silent: Boolean
+    ): PendingIntent {
+        val intent = Intent(context, MarkCompletedReceiver::class.java).apply {
+            action = MarkCompletedReceiver.ACTION_MARK_COMPLETED
+            data = Uri.parse("flexreminder://mark-completed/$id")
+            putExtra(AlarmScheduler.EXTRA_ID, id)
+            putExtra(AlarmScheduler.EXTRA_TITLE, title)
+            putExtra(AlarmScheduler.EXTRA_NOTES, notes)
+            putExtra(EXTRA_SILENT, silent)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            (id * 100 + 90).toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     private fun buildSnoozePI(

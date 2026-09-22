@@ -1,29 +1,26 @@
 package com.example.flexreminder.alarm
 
+import com.example.flexreminder.data.Iteration
+import com.example.flexreminder.data.IterationStatus
 import com.example.flexreminder.data.Reminder
 import com.example.flexreminder.data.ScheduleMode
+import com.example.flexreminder.data.StatusSource
 
 object ReminderLogic {
 
     /**
-     * Проверяет, попадает ли конкретный день (в миллисекундах полуночи)
-     * в активное расписание напоминания.
+     * Проверяет, попадает ли конкретный день в активное расписание напоминания.
+     * Учитывает endDate.
      */
     fun isActiveOn(r: Reminder, dayMidnight: Long): Boolean {
         if (r.daysOn < 1 && r.customDates.isEmpty()) return false
 
-        // Проверка окончания периода — общая для обоих режимов.
-        // endDate трактуется как включительная граница (до конца дня).
         val endBoundary = r.endDate?.let { DateUtils.endOfDay(it) }
         if (endBoundary != null && dayMidnight > endBoundary) return false
 
         return when (r.mode) {
-            ScheduleMode.CUSTOM_DATES -> {
-                r.customDates.contains(DateUtils.midnight(dayMidnight))
-            }
-            ScheduleMode.INTERVAL -> {
-                isActiveByInterval(r, dayMidnight)
-            }
+            ScheduleMode.CUSTOM_DATES -> r.customDates.contains(DateUtils.midnight(dayMidnight))
+            ScheduleMode.INTERVAL -> isActiveByInterval(r, dayMidnight)
         }
     }
 
@@ -41,8 +38,8 @@ object ReminderLogic {
     }
 
     /**
-     * Следующий момент срабатывания, начиная с from (не включая).
-     * Возвращает null, если дальше ничего нет.
+     * Следующий момент срабатывания по расписанию, без учёта отметок.
+     * Используется для расчёта базового расписания.
      */
     fun nextTriggerTime(r: Reminder, from: Long = System.currentTimeMillis()): Long? {
         if (!r.enabled) return null
@@ -51,6 +48,38 @@ object ReminderLogic {
             ScheduleMode.CUSTOM_DATES -> nextTriggerCustomDates(r, from)
             ScheduleMode.INTERVAL -> nextTriggerInterval(r, from)
         }
+    }
+
+    /**
+     * Следующий момент срабатывания с учётом отметок итераций.
+     * Итерации со статусом COMPLETED или SKIPPED (USER) пропускаются.
+     */
+    fun nextPendingTrigger(
+        reminder: Reminder,
+        iterations: List<Iteration>,
+        from: Long = System.currentTimeMillis()
+    ): Long? {
+        if (iterations.isEmpty()) return nextTriggerTime(reminder, from)
+
+        val iterationMap = iterations.associateBy { it.dateMillis }
+        var cursor = from
+        var guard = 0
+        val maxIterations = 500
+
+        while (guard < maxIterations) {
+            val next = nextTriggerTime(reminder, cursor) ?: return null
+            val dateMillis = DateUtils.midnight(next)
+            val iteration = iterationMap[dateMillis]
+            val isMarked = iteration != null && (
+                    iteration.status == IterationStatus.COMPLETED ||
+                            (iteration.status == IterationStatus.SKIPPED &&
+                                    iteration.statusSource == StatusSource.USER)
+                    )
+            if (!isMarked) return next
+            cursor = next + 1
+            guard++
+        }
+        return null
     }
 
     private fun nextTriggerCustomDates(r: Reminder, from: Long): Long? {

@@ -31,6 +31,10 @@
         <receiver
             android:name=".alarm.SnoozeReceiver"
             android:exported="false" />
+			
+		<receiver
+            android:name=".alarm.MarkCompletedReceiver"
+            android:exported="false" />	
 
         <receiver
             android:name=".alarm.BootReceiver"
