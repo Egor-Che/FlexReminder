@@ -68,8 +68,13 @@ class MainActivity : ComponentActivity() {
             }
 
             // Очистка «сиротских» каналов
-            cleanupChannels(reminders.mapNotNull { it.soundUri } +
-                    listOfNotNull(SettingsRepository.get(this@MainActivity).getDefaultSoundUriBlocking()))
+            cleanupChannels(
+                reminders.mapNotNull { it.soundUri } +
+                        listOfNotNull(
+                            SettingsRepository.get(this@MainActivity)
+                                .getDefaultSoundUriBlocking()
+                        )
+            )
         }
 
         setContent {
@@ -119,7 +124,7 @@ fun AppNav() {
 
         composable("settings") {
             SettingsScreen(
-                onBack = { nav.popBackStack() }
+                onBack = { nav.navigateUp() }
             )
         }
 
@@ -132,7 +137,7 @@ fun AppNav() {
             ViewReminderScreen(
                 vm = vm,
                 reminderId = id,
-                onBack = { nav.popBackStack() },
+                onBack = { nav.navigateUp() },
                 onEdit = { nav.navigate("edit/$id") }
             )
         }
@@ -146,7 +151,7 @@ fun AppNav() {
             EditReminderScreen(
                 vm = vm,
                 reminderId = id,
-                onDone = { nav.popBackStack() }
+                onDone = { nav.navigateUp() }
             )
         }
 
@@ -157,7 +162,7 @@ fun AppNav() {
             val id = entry.arguments?.getLong("id") ?: -1L
             MarkIterationsScreen(
                 reminderId = id,
-                onBack = { nav.popBackStack() }
+                onBack = { nav.navigateUp() }
             )
         }
     }
