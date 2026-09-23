@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.flexreminder.alarm.DateUtils
+import com.example.flexreminder.alarm.SoundResolver
 import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Reminder
@@ -76,6 +78,7 @@ fun EditReminderScreen(
 
     val settingsVm: SettingsViewModel = viewModel()
     val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
+    val defaultSoundUri by settingsVm.defaultSoundUri.collectAsStateWithLifecycle()
 
     var loaded by remember { mutableStateOf(isNew) }
     var title by remember { mutableStateOf("") }
@@ -99,9 +102,13 @@ fun EditReminderScreen(
 
     var colorIndex by remember { mutableStateOf<Int?>(null) }
 
+    var soundUri by remember { mutableStateOf<String?>(null) }
+    var soundName by remember { mutableStateOf<String?>(null) }
+
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var showSoundDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(reminderId) {
         if (!isNew && !loaded) {
@@ -122,6 +129,7 @@ fun EditReminderScreen(
                 enabled = r.enabled
                 silent = r.silent
                 colorIndex = r.colorIndex
+                soundUri = r.soundUri
                 if (r.mode == ScheduleMode.INTERVAL) {
                     lastGeneratedKey = intervalKey(
                         r.daysOn, r.daysOff, r.startDate, r.endDate
@@ -129,6 +137,15 @@ fun EditReminderScreen(
                 }
             }
             loaded = true
+        }
+    }
+
+    // Обновляем отображаемое имя звука, когда меняется soundUri или глобальный дефолт
+    LaunchedEffect(soundUri, defaultSoundUri) {
+        val effectiveUri = soundUri ?: defaultSoundUri
+        soundName = if (effectiveUri.isNullOrBlank()) null
+        else withContext(Dispatchers.IO) {
+            SoundResolver.getTrackName(ctx, effectiveUri)
         }
     }
 
@@ -318,30 +335,6 @@ fun EditReminderScreen(
                 )
             }
 
-            if (appTheme == AppTheme.PALETTE) {
-                Spacer(Modifier.height(20.dp))
-
-                Text("Цвет напоминания", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(4.dp))
-
-                val selectedColorName = ReminderPalette.get(colorIndex)?.name
-                Text(
-                    text = if (selectedColorName == null) {
-                        "Не выбран"
-                    } else {
-                        "Выбран: $selectedColorName"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-
-                ColorPalettePicker(
-                    selectedIndex = colorIndex,
-                    onPick = { colorIndex = it }
-                )
-            }
-
             Spacer(Modifier.height(16.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -392,6 +385,85 @@ fun EditReminderScreen(
                 )
             }
 
+            // Секция выбора конкретного звука — только если свитч включён и звук не выключен
+            if (enabled && !silent) {
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Звук:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = when {
+                                soundUri != null -> soundName ?: "Не найден"
+                                defaultSoundUri != null -> soundName ?: "Системный (из настроек)"
+                                else -> "Системный"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 2
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { showSoundDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VolumeUp,
+                            contentDescription = "Выбрать звук",
+                            tint = accentColor
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { soundUri = null },
+                        enabled = soundUri != null
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Restore,
+                            contentDescription = "Сбросить на звук по умолчанию",
+                            tint = if (soundUri != null)
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
+                    }
+                }
+            }
+
+            if (appTheme == AppTheme.PALETTE) {
+                Spacer(Modifier.height(20.dp))
+
+                Text("Цвет напоминания", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+
+                val selectedColorName = ReminderPalette.get(colorIndex)?.name
+                Text(
+                    text = if (selectedColorName == null) {
+                        "Не выбран"
+                    } else {
+                        "Выбран: $selectedColorName"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+
+                ColorPalettePicker(
+                    selectedIndex = colorIndex,
+                    onPick = { colorIndex = it }
+                )
+            }
+
             Spacer(Modifier.height(24.dp))
 
             Button(
@@ -417,7 +489,8 @@ fun EditReminderScreen(
                         minute = minute,
                         enabled = enabled,
                         silent = if (enabled) silent else false,
-                        colorIndex = colorIndex
+                        colorIndex = colorIndex,
+                        soundUri = soundUri
                     )
                     vm.save(r) { onDone() }
                 },
@@ -465,6 +538,18 @@ fun EditReminderScreen(
             minute = m
         }
     )
+
+    if (showSoundDialog) {
+        SoundPickerDialog(
+            initialUri = soundUri ?: defaultSoundUri,
+            onPicked = { picked ->
+                soundUri = picked?.takeIf { it != defaultSoundUri } ?: picked
+                soundUri = picked
+                showSoundDialog = false
+            },
+            onDismiss = { showSoundDialog = false }
+        )
+    }
 }
 
 @Composable

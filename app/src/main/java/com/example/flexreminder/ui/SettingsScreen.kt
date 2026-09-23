@@ -45,12 +45,16 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val vm: SettingsViewModel = viewModel()
+
     val snoozeShort by vm.snoozeShort.collectAsStateWithLifecycle()
     val snoozeLong by vm.snoozeLong.collectAsStateWithLifecycle()
     val appTheme by vm.appTheme.collectAsStateWithLifecycle()
+    val defaultSoundUri by vm.defaultSoundUri.collectAsStateWithLifecycle()
+    val defaultSoundName by vm.defaultSoundName.collectAsStateWithLifecycle()
     val editingField by vm.editingField.collectAsStateWithLifecycle()
     val editingValue by vm.editingValue.collectAsStateWithLifecycle()
     val themeDialogOpen by vm.themeDialogOpen.collectAsStateWithLifecycle()
+    val soundDialogOpen by vm.soundDialogOpen.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -89,24 +93,23 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
             HorizontalDivider()
 
+            SectionHeader("Уведомления")
+
+            SettingRow(
+                title = "Звук по умолчанию",
+                subtitle = defaultSoundName ?: "Мелодия приложения",
+                onClick = { vm.openSoundDialog() }
+            )
+
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+
             SectionHeader("Внешний вид")
 
             SettingRow(
                 title = "Тема",
                 subtitle = themeLabel(appTheme),
                 onClick = { vm.openThemeDialog() }
-            )
-
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider()
-
-            SectionHeader("Прочее")
-
-            SettingRow(
-                title = "Звук уведомления",
-                subtitle = "Скоро",
-                enabled = false,
-                onClick = {}
             )
         }
     }
@@ -126,6 +129,14 @@ fun SettingsScreen(
             current = appTheme,
             onPick = vm::setTheme,
             onDismiss = vm::closeThemeDialog
+        )
+    }
+
+    if (soundDialogOpen) {
+        SoundPickerDialog(
+            initialUri = defaultSoundUri,
+            onPicked = { vm.setDefaultSoundUri(it) },
+            onDismiss = { vm.closeSoundDialog() }
         )
     }
 }
@@ -171,7 +182,8 @@ private fun SettingRow(
                 color = if (enabled)
                     MaterialTheme.colorScheme.onSurfaceVariant
                 else
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                maxLines = 2
             )
         }
         if (enabled) {

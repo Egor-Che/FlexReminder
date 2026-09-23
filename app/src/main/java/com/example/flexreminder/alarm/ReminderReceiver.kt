@@ -20,7 +20,6 @@ class ReminderReceiver : BroadcastReceiver() {
 
         val title = intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "Напоминание"
         val notes = intent.getStringExtra(AlarmScheduler.EXTRA_NOTES).orEmpty()
-        val silent = intent.getBooleanExtra(Notifications.EXTRA_SILENT, false)
 
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
@@ -54,10 +53,12 @@ class ReminderReceiver : BroadcastReceiver() {
                     iterationDao.upsertByDate(iteration)
 
                     val snoozeCount = iteration.snoozeCount
-
                     val settings = SettingsRepository.get(context)
                     val snoozeShort = settings.getSnoozeShort()
                     val snoozeLong = settings.getSnoozeLong()
+
+                    // Определяем канал: silent / custom / default / базовый
+                    val channelId = resolveChannel(context, reminder)
 
                     val flags = Notifications.computeFlags(
                         reminder = reminder,
@@ -72,7 +73,7 @@ class ReminderReceiver : BroadcastReceiver() {
                         id = id,
                         title = title,
                         text = notes,
-                        silent = silent,
+                        channelId = channelId,
                         dateMillis = scheduledDate,
                         showSnoozeShort = flags.showSnoozeShort,
                         showSnoozeLong = flags.showSnoozeLong,
@@ -86,6 +87,32 @@ class ReminderReceiver : BroadcastReceiver() {
             } finally {
                 pending.finish()
             }
+        }
+    }
+
+    private suspend fun resolveChannel(
+        context: Context,
+        reminder: com.example.flexreminder.data.Reminder
+    ): String {
+        if (reminder.silent) return NotificationChannels.CHANNEL_SILENT
+
+        val settings = SettingsRepository.get(context)
+        val globalUri = settings.getDefaultSoundUri()
+
+        val effectiveUri = SoundResolver.resolveSoundUri(context, reminder, globalUri)
+        if (effectiveUri == null) {
+            return NotificationChannels.CHANNEL_LOUD
+        }
+
+        // Если звук напоминания совпадает с глобальным → используем канал default
+        val sameAsGlobal = !reminder.soundUri.isNullOrBlank() &&
+                reminder.soundUri == globalUri
+        val useGlobalChannel = reminder.soundUri.isNullOrBlank()
+
+        return if (useGlobalChannel || sameAsGlobal) {
+            NotificationChannels.getOrCreateDefaultChannel(context, effectiveUri)
+        } else {
+            NotificationChannels.getOrCreateCustomChannel(context, effectiveUri)
         }
     }
 

@@ -21,7 +21,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.flexreminder.alarm.AlarmScheduler
 import com.example.flexreminder.alarm.AutoSkipWorker
+import com.example.flexreminder.alarm.NotificationChannels
 import com.example.flexreminder.alarm.Notifications
+import com.example.flexreminder.alarm.SoundResolver
 import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.SettingsRepository
@@ -48,11 +50,26 @@ class MainActivity : ComponentActivity() {
         )
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val dao = AppDatabase.get(this@MainActivity).reminderDao()
-            dao.getEnabled().forEach { r ->
+            // Перепланирование активных будильников
+            val reminderDao = AppDatabase.get(this@MainActivity).reminderDao()
+            val reminders = reminderDao.getEnabled()
+            reminders.forEach { r ->
                 AlarmScheduler.cancel(this@MainActivity, r.id)
                 AlarmScheduler.schedule(this@MainActivity, r)
             }
+
+            // Сброс невалидных URI
+            val invalidReminders = reminders.filter {
+                !it.soundUri.isNullOrBlank() &&
+                        !SoundResolver.isUriValid(this@MainActivity, it.soundUri)
+            }
+            invalidReminders.forEach { r ->
+                reminderDao.update(r.copy(soundUri = null))
+            }
+
+            // Очистка «сиротских» каналов
+            cleanupChannels(reminders.mapNotNull { it.soundUri } +
+                    listOfNotNull(SettingsRepository.get(this@MainActivity).getDefaultSoundUriBlocking()))
         }
 
         setContent {
@@ -67,6 +84,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun cleanupChannels(activeUris: List<String>) {
+        val activeChannelIds = activeUris
+            .filter { it.isNotBlank() }
+            .map { NotificationChannels.computeCustomChannelId(it) }
+            .toSet() +
+                activeUris
+                    .filter { it.isNotBlank() }
+                    .map { NotificationChannels.computeDefaultChannelId(it) }
+                    .toSet()
+
+        NotificationChannels.cleanupUnusedChannels(this, activeChannelIds)
     }
 }
 

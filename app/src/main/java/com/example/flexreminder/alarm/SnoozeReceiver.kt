@@ -35,13 +35,12 @@ class SnoozeReceiver : BroadcastReceiver() {
         val dateMillis = intent.getLongExtra(EXTRA_DATE_MILLIS, -1L)
         val title = intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "Напоминание"
         val notes = intent.getStringExtra(AlarmScheduler.EXTRA_NOTES).orEmpty()
-        val silent = intent.getBooleanExtra(Notifications.EXTRA_SILENT, false)
 
         NotificationManagerCompat.from(context).cancel(id.toInt())
 
         val trigger = System.currentTimeMillis() + minutes * 60_000L
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val pi = firePI(context, id, dateMillis, title, notes, silent, minutes)
+        val pi = firePI(context, id, dateMillis, title, notes, minutes)
 
         try {
             val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
@@ -84,7 +83,6 @@ class SnoozeReceiver : BroadcastReceiver() {
         val dateMillis = intent.getLongExtra(EXTRA_DATE_MILLIS, -1L)
         val title = intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "Напоминание"
         val notes = intent.getStringExtra(AlarmScheduler.EXTRA_NOTES).orEmpty()
-        val silent = intent.getBooleanExtra(Notifications.EXTRA_SILENT, false)
 
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
@@ -111,6 +109,8 @@ class SnoozeReceiver : BroadcastReceiver() {
                 val snoozeShort = settings.getSnoozeShort()
                 val snoozeLong = settings.getSnoozeLong()
 
+                val channelId = resolveChannel(context, reminder)
+
                 val flags = Notifications.computeFlags(
                     reminder = reminder,
                     dateMillis = dateMillis,
@@ -124,7 +124,7 @@ class SnoozeReceiver : BroadcastReceiver() {
                     id = id,
                     title = title,
                     text = notes,
-                    silent = silent,
+                    channelId = channelId,
                     dateMillis = dateMillis,
                     showSnoozeShort = flags.showSnoozeShort,
                     showSnoozeLong = flags.showSnoozeLong,
@@ -138,13 +138,37 @@ class SnoozeReceiver : BroadcastReceiver() {
         }
     }
 
+    private suspend fun resolveChannel(
+        context: Context,
+        reminder: com.example.flexreminder.data.Reminder
+    ): String {
+        if (reminder.silent) return NotificationChannels.CHANNEL_SILENT
+
+        val settings = SettingsRepository.get(context)
+        val globalUri = settings.getDefaultSoundUri()
+
+        val effectiveUri = SoundResolver.resolveSoundUri(context, reminder, globalUri)
+        if (effectiveUri == null) {
+            return NotificationChannels.CHANNEL_LOUD
+        }
+
+        val sameAsGlobal = !reminder.soundUri.isNullOrBlank() &&
+                reminder.soundUri == globalUri
+        val useGlobalChannel = reminder.soundUri.isNullOrBlank()
+
+        return if (useGlobalChannel || sameAsGlobal) {
+            NotificationChannels.getOrCreateDefaultChannel(context, effectiveUri)
+        } else {
+            NotificationChannels.getOrCreateCustomChannel(context, effectiveUri)
+        }
+    }
+
     private fun firePI(
         context: Context,
         id: Long,
         dateMillis: Long,
         title: String,
         notes: String,
-        silent: Boolean,
         minutes: Int
     ): PendingIntent {
         val intent = Intent(context, SnoozeReceiver::class.java).apply {
@@ -154,7 +178,6 @@ class SnoozeReceiver : BroadcastReceiver() {
             putExtra(EXTRA_DATE_MILLIS, dateMillis)
             putExtra(AlarmScheduler.EXTRA_TITLE, title)
             putExtra(AlarmScheduler.EXTRA_NOTES, notes)
-            putExtra(Notifications.EXTRA_SILENT, silent)
             putExtra(EXTRA_MINUTES, minutes)
         }
         return PendingIntent.getBroadcast(

@@ -13,9 +13,7 @@ import kotlinx.coroutines.runBlocking
 private val Context.settingsDataStore by preferencesDataStore(name = "app_settings")
 
 enum class AppTheme {
-    /** Строгая тема: только оттенки серого. */
     MONOCHROME,
-    /** Весёлая тема: пастельная палитра 16 цветов. */
     PALETTE
 }
 
@@ -45,14 +43,11 @@ class SettingsRepository private constructor(context: Context) {
     }
 
     suspend fun getSnoozeShort(): Int = snoozeShortMinutes.first()
-
     suspend fun getSnoozeLong(): Int = snoozeLongMinutes.first()
-
     fun getSnoozeShortBlocking(): Int = runBlocking { snoozeShortMinutes.first() }
-
     fun getSnoozeLongBlocking(): Int = runBlocking { snoozeLongMinutes.first() }
 
-    // ---------- Тема приложения ----------
+    // ---------- Тема ----------
 
     val appTheme: Flow<AppTheme> = dataStore.data.map { prefs ->
         val raw = prefs[KEY_APP_THEME]
@@ -69,6 +64,30 @@ class SettingsRepository private constructor(context: Context) {
         }
     }
 
+    // ---------- Звук по умолчанию ----------
+
+    /**
+     * URI звука по умолчанию.
+     * null = использовать системный дефолт (канал reminders_loud).
+     */
+    val defaultSoundUri: Flow<String?> = dataStore.data.map { prefs ->
+        prefs[KEY_DEFAULT_SOUND_URI]
+    }
+
+    suspend fun setDefaultSoundUri(uri: String?) {
+        dataStore.edit { prefs ->
+            if (uri == null) {
+                prefs.remove(KEY_DEFAULT_SOUND_URI)
+            } else {
+                prefs[KEY_DEFAULT_SOUND_URI] = uri
+            }
+        }
+    }
+
+    suspend fun getDefaultSoundUri(): String? = defaultSoundUri.first()
+
+    fun getDefaultSoundUriBlocking(): String? = runBlocking { defaultSoundUri.first() }
+
     companion object {
         const val MIN_SNOOZE_MINUTES = 1
         const val MAX_SNOOZE_MINUTES = 720
@@ -83,6 +102,7 @@ class SettingsRepository private constructor(context: Context) {
         private val KEY_SNOOZE_SHORT = intPreferencesKey("snooze_short_minutes")
         private val KEY_SNOOZE_LONG = intPreferencesKey("snooze_long_minutes")
         private val KEY_APP_THEME = stringPreferencesKey("app_theme")
+        private val KEY_DEFAULT_SOUND_URI = stringPreferencesKey("default_sound_uri")
 
         @Volatile
         private var INSTANCE: SettingsRepository? = null

@@ -3,12 +3,14 @@ package com.example.flexreminder.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.flexreminder.alarm.SoundResolver
 import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -46,13 +48,8 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _themeDialogOpen = MutableStateFlow(false)
     val themeDialogOpen: StateFlow<Boolean> = _themeDialogOpen.asStateFlow()
 
-    fun openThemeDialog() {
-        _themeDialogOpen.value = true
-    }
-
-    fun closeThemeDialog() {
-        _themeDialogOpen.value = false
-    }
+    fun openThemeDialog() { _themeDialogOpen.value = true }
+    fun closeThemeDialog() { _themeDialogOpen.value = false }
 
     fun setTheme(theme: AppTheme) {
         viewModelScope.launch {
@@ -61,7 +58,43 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- Диалог snooze ----------
+    // ---------- Звук по умолчанию ----------
+
+    val defaultSoundUri: StateFlow<String?> = repo.defaultSoundUri
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            null
+        )
+
+    /**
+     * Отображаемое имя звука. null означает «Системный».
+     */
+    val defaultSoundName: StateFlow<String?> = repo.defaultSoundUri
+        .map { uri ->
+            if (uri.isNullOrBlank()) null
+            else SoundResolver.getTrackName(getApplication(), uri)
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            null
+        )
+
+    private val _soundDialogOpen = MutableStateFlow(false)
+    val soundDialogOpen: StateFlow<Boolean> = _soundDialogOpen.asStateFlow()
+
+    fun openSoundDialog() { _soundDialogOpen.value = true }
+    fun closeSoundDialog() { _soundDialogOpen.value = false }
+
+    fun setDefaultSoundUri(uri: String?) {
+        viewModelScope.launch {
+            repo.setDefaultSoundUri(uri)
+            _soundDialogOpen.value = false
+        }
+    }
+
+    // ---------- Snooze-диалог ----------
 
     private val _editingField = MutableStateFlow<SnoozeField?>(null)
     val editingField: StateFlow<SnoozeField?> = _editingField.asStateFlow()
