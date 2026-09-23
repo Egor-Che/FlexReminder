@@ -75,7 +75,7 @@ Android-приложение для создания напоминаний с *
 | Планировщик | AlarmManager |
 | Сборка | Gradle 8.4 + AGP 8.2.2 |
 | CI/CD | GitHub Actions |
-| Минимальная версия | Android 7.0 (API 24) |
+| Минимальная версия | Android 8.0 (API 26) |
 | Целевая версия | Android 14 (API 34) |
 
 ---
