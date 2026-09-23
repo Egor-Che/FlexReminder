@@ -12,10 +12,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/**
- * Обрабатывает нажатие кнопки «Пропустить» в уведомлении (после 5 snooze).
- * Для прошедшей итерации ставит SKIPPED (SYSTEM), для будущей — SKIPPED (USER).
- */
 class MarkSkippedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -54,7 +50,8 @@ class MarkSkippedReceiver : BroadcastReceiver() {
                         statusSource = if (isPast) StatusSource.SYSTEM else StatusSource.USER,
                         statusChangedAt = now,
                         snoozeCount = 0,
-                        lastSnoozeAt = null
+                        lastSnoozeAt = null,
+                        snoozeUntil = null
                     )
 
                 iterationDao.upsertByDate(iteration)

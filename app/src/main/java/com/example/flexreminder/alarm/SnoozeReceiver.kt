@@ -38,9 +38,10 @@ class SnoozeReceiver : BroadcastReceiver() {
 
         NotificationManagerCompat.from(context).cancel(id.toInt())
 
-        val trigger = System.currentTimeMillis() + minutes * 60_000L
+        val now = System.currentTimeMillis()
+        val trigger = now + minutes * 60_000L
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val pi = firePI(context, id, dateMillis, title, notes, minutes)
+        val pi = buildSnoozeFirePI(context, id, dateMillis, title, notes, minutes)
 
         try {
             val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
@@ -66,7 +67,8 @@ class SnoozeReceiver : BroadcastReceiver() {
                     dao.upsertByDate(
                         base.copy(
                             snoozeCount = base.snoozeCount + 1,
-                            lastSnoozeAt = System.currentTimeMillis()
+                            lastSnoozeAt = now,
+                            snoozeUntil = trigger
                         )
                     )
                 }
@@ -102,6 +104,10 @@ class SnoozeReceiver : BroadcastReceiver() {
                                 iteration.status == IterationStatus.SKIPPED
                         )
                 if (alreadyMarked) return@launch
+
+                if (iteration != null) {
+                    iterationDao.upsertByDate(iteration.copy(snoozeUntil = null))
+                }
 
                 val snoozeCount = iteration?.snoozeCount ?: 0
 
@@ -163,36 +169,40 @@ class SnoozeReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun firePI(
-        context: Context,
-        id: Long,
-        dateMillis: Long,
-        title: String,
-        notes: String,
-        minutes: Int
-    ): PendingIntent {
-        val intent = Intent(context, SnoozeReceiver::class.java).apply {
-            action = ACTION_SNOOZE_FIRE
-            data = Uri.parse("flexreminder://snooze-fire/$id/$dateMillis/$minutes")
-            putExtra(AlarmScheduler.EXTRA_ID, id)
-            putExtra(EXTRA_DATE_MILLIS, dateMillis)
-            putExtra(AlarmScheduler.EXTRA_TITLE, title)
-            putExtra(AlarmScheduler.EXTRA_NOTES, notes)
-            putExtra(EXTRA_MINUTES, minutes)
-        }
-        return PendingIntent.getBroadcast(
-            context,
-            fireRequestCode(id, minutes),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-
     companion object {
         const val ACTION_SNOOZE_BUTTON = "com.example.flexreminder.SNOOZE_BUTTON"
         const val ACTION_SNOOZE_FIRE = "com.example.flexreminder.SNOOZE_FIRE"
         const val EXTRA_MINUTES = "extra_minutes"
         const val EXTRA_DATE_MILLIS = "extra_date_millis"
+
+        /**
+         * Собирает PendingIntent для срабатывания отложенного уведомления.
+         * Public — используется из [SnoozeRestorer] при восстановлении после ребута.
+         */
+        fun buildSnoozeFirePI(
+            context: Context,
+            reminderId: Long,
+            dateMillis: Long,
+            title: String,
+            notes: String,
+            minutes: Int
+        ): PendingIntent {
+            val intent = Intent(context, SnoozeReceiver::class.java).apply {
+                action = ACTION_SNOOZE_FIRE
+                data = Uri.parse("flexreminder://snooze-fire/$reminderId/$dateMillis/$minutes")
+                putExtra(AlarmScheduler.EXTRA_ID, reminderId)
+                putExtra(EXTRA_DATE_MILLIS, dateMillis)
+                putExtra(AlarmScheduler.EXTRA_TITLE, title)
+                putExtra(AlarmScheduler.EXTRA_NOTES, notes)
+                putExtra(EXTRA_MINUTES, minutes)
+            }
+            return PendingIntent.getBroadcast(
+                context,
+                fireRequestCode(reminderId, minutes),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
 
         fun cancelAllSnoozes(context: Context, reminderId: Long) {
             val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -220,7 +230,7 @@ class SnoozeReceiver : BroadcastReceiver() {
             NotificationManagerCompat.from(context).cancel(reminderId.toInt())
         }
 
-        private fun fireRequestCode(id: Long, minutes: Int): Int =
+        fun fireRequestCode(id: Long, minutes: Int): Int =
             (id * 1000 + 100 + minutes).toInt()
     }
 }

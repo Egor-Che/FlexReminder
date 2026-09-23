@@ -21,6 +21,9 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val dao = AppDatabase.get(context).reminderDao()
                 dao.getEnabled().forEach { AlarmScheduler.schedule(context, it) }
+
+                // Восстанавливаем активные отложки (snooze)
+                SnoozeRestorer.restoreAll(context)
             } finally {
                 pending.finish()
             }

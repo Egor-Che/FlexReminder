@@ -36,6 +36,13 @@ interface IterationDao {
     )
     suspend fun getPendingBefore(boundaryMillis: Long): List<Iteration>
 
+    /**
+     * Все итерации с активной отложкой (snoozeUntil != null).
+     * Используется для восстановления после перезагрузки устройства.
+     */
+    @Query("SELECT * FROM iterations WHERE snoozeUntil IS NOT NULL")
+    suspend fun getAllWithActiveSnooze(): List<Iteration>
+
     @Insert
     suspend fun insert(iteration: Iteration): Long
 
@@ -48,10 +55,6 @@ interface IterationDao {
     @Query("DELETE FROM iterations WHERE reminderId = :reminderId")
     suspend fun deleteByReminder(reminderId: Long)
 
-    /**
-     * Вставляет или обновляет итерацию по уникальной паре (reminderId, dateMillis).
-     * Сохраняет исходный id при обновлении.
-     */
     @Transaction
     suspend fun upsertByDate(iteration: Iteration): Long {
         val existing = get(iteration.reminderId, iteration.dateMillis)
@@ -63,9 +66,6 @@ interface IterationDao {
         }
     }
 
-    /**
-     * Вставляет или обновляет сразу список.
-     */
     @Transaction
     suspend fun upsertAll(iterations: List<Iteration>) {
         iterations.forEach { upsertByDate(it) }

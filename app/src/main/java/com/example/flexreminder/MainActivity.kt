@@ -23,6 +23,7 @@ import com.example.flexreminder.alarm.AlarmScheduler
 import com.example.flexreminder.alarm.AutoSkipWorker
 import com.example.flexreminder.alarm.NotificationChannels
 import com.example.flexreminder.alarm.Notifications
+import com.example.flexreminder.alarm.SnoozeRestorer
 import com.example.flexreminder.alarm.SoundResolver
 import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.data.AppTheme
@@ -50,15 +51,16 @@ class MainActivity : ComponentActivity() {
         )
 
         lifecycleScope.launch(Dispatchers.IO) {
-            // Перепланирование активных будильников
             val reminderDao = AppDatabase.get(this@MainActivity).reminderDao()
             val reminders = reminderDao.getEnabled()
+
+            // Перепланирование основных будильников
             reminders.forEach { r ->
                 AlarmScheduler.cancel(this@MainActivity, r.id)
                 AlarmScheduler.schedule(this@MainActivity, r)
             }
 
-            // Сброс невалидных URI
+            // Сброс невалидных URI звуков
             val invalidReminders = reminders.filter {
                 !it.soundUri.isNullOrBlank() &&
                         !SoundResolver.isUriValid(this@MainActivity, it.soundUri)
@@ -67,7 +69,7 @@ class MainActivity : ComponentActivity() {
                 reminderDao.update(r.copy(soundUri = null))
             }
 
-            // Очистка «сиротских» каналов
+            // Очистка «сиротских» каналов уведомлений
             cleanupChannels(
                 reminders.mapNotNull { it.soundUri } +
                         listOfNotNull(
@@ -75,6 +77,9 @@ class MainActivity : ComponentActivity() {
                                 .getDefaultSoundUriBlocking()
                         )
             )
+
+            // Восстановление активных snooze
+            SnoozeRestorer.restoreAll(this@MainActivity)
         }
 
         setContent {

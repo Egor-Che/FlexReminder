@@ -12,11 +12,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/**
- * Обрабатывает нажатие кнопки «Выполнено» в уведомлении.
- * Ставит статус COMPLETED (USER) для текущей итерации.
- * Отменяет активные snooze этой итерации.
- */
 class MarkCompletedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -55,7 +50,8 @@ class MarkCompletedReceiver : BroadcastReceiver() {
                         statusSource = StatusSource.USER,
                         statusChangedAt = now,
                         snoozeCount = 0,
-                        lastSnoozeAt = null
+                        lastSnoozeAt = null,
+                        snoozeUntil = null
                     )
 
                 iterationDao.upsertByDate(iteration)
