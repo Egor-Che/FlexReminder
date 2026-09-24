@@ -49,5 +49,11 @@ data class Reminder(
      * URI звука уведомления для этого напоминания.
      * null = использовать глобальный звук из настроек (или дефолт).
      */
-    val soundUri: String? = null
+    val soundUri: String? = null,
+
+    /**
+     * Время архивации (мс).
+     * null = напоминание активно. Не null = в архиве.
+     */
+    val archivedAt: Long? = null
 )

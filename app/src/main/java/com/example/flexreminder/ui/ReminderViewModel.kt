@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.flexreminder.alarm.AlarmScheduler
+import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.alarm.SnoozeReceiver
 import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.data.Iteration
@@ -16,8 +17,9 @@ import kotlinx.coroutines.launch
 
 class ReminderViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val dao = AppDatabase.get(app).reminderDao()
-    private val iterationDao = AppDatabase.get(app).iterationDao()
+    private val db = AppDatabase.get(app)
+    private val dao = db.reminderDao()
+    private val iterationDao = db.iterationDao()
 
     val reminders: StateFlow<List<Reminder>> = dao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -30,17 +32,35 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
     fun observeAllIterations(): Flow<List<Iteration>> = iterationDao.observeAll()
 
     fun save(reminder: Reminder, onDone: () -> Unit) = viewModelScope.launch {
-        val id = if (reminder.id == 0L) {
-            dao.insert(reminder)
+        // Проверяем: если endDate в прошлом — сразу архивируем
+        val todayMidnight = DateUtils.midnight(System.currentTimeMillis())
+        val shouldArchive = reminder.endDate != null && reminder.endDate < todayMidnight
+
+        val prepared = if (shouldArchive) {
+            reminder.copy(archivedAt = System.currentTimeMillis())
         } else {
-            dao.update(reminder)
-            reminder.id
+            reminder
         }
-        val saved = reminder.copy(id = id)
+
+        val id = if (prepared.id == 0L) {
+            dao.insert(prepared)
+        } else {
+            dao.update(prepared)
+            prepared.id
+        }
+        val saved = prepared.copy(id = id)
         AlarmScheduler.cancel(getApplication(), id)
-        if (saved.enabled) {
+
+        // Если напоминание заархивировано — не планируем будильник
+        if (saved.enabled && !shouldArchive) {
             AlarmScheduler.schedule(getApplication(), saved)
         }
+
+        // Если архивируем — закрываем pending-итерации
+        if (shouldArchive) {
+            iterationDao.markPendingAsSkippedForReminder(id, System.currentTimeMillis())
+        }
+
         onDone()
     }
 

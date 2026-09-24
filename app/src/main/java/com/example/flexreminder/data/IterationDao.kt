@@ -36,12 +36,24 @@ interface IterationDao {
     )
     suspend fun getPendingBefore(boundaryMillis: Long): List<Iteration>
 
-    /**
-     * Все итерации с активной отложкой (snoozeUntil != null).
-     * Используется для восстановления после перезагрузки устройства.
-     */
     @Query("SELECT * FROM iterations WHERE snoozeUntil IS NOT NULL")
     suspend fun getAllWithActiveSnooze(): List<Iteration>
+
+    /**
+     * Помечает все PENDING-итерации напоминания как SKIPPED (SYSTEM).
+     * Используется при архивации, чтобы закрыть оставшиеся «висящие» итерации.
+     * Возвращает количество обновлённых записей.
+     */
+    @Query(
+        "UPDATE iterations " +
+                "SET status = 'SKIPPED', " +
+                "    statusSource = 'SYSTEM', " +
+                "    statusChangedAt = :now, " +
+                "    snoozeUntil = NULL " +
+                "WHERE reminderId = :reminderId " +
+                "AND status = 'PENDING'"
+    )
+    suspend fun markPendingAsSkippedForReminder(reminderId: Long, now: Long): Int
 
     @Insert
     suspend fun insert(iteration: Iteration): Long

@@ -27,9 +27,12 @@ import com.example.flexreminder.alarm.SnoozeRestorer
 import com.example.flexreminder.alarm.SoundResolver
 import com.example.flexreminder.data.AppDatabase
 import com.example.flexreminder.data.AppTheme
+import com.example.flexreminder.data.ArchiveManager
 import com.example.flexreminder.data.SettingsRepository
+import com.example.flexreminder.ui.ArchiveScreen
 import com.example.flexreminder.ui.EditReminderScreen
 import com.example.flexreminder.ui.MarkIterationsScreen
+import com.example.flexreminder.ui.ReminderHistoryScreen
 import com.example.flexreminder.ui.ReminderListScreen
 import com.example.flexreminder.ui.ReminderViewModel
 import com.example.flexreminder.ui.SettingsScreen
@@ -51,16 +54,20 @@ class MainActivity : ComponentActivity() {
         )
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val reminderDao = AppDatabase.get(this@MainActivity).reminderDao()
-            val reminders = reminderDao.getEnabled()
+            val db = AppDatabase.get(this@MainActivity)
 
-            // Перепланирование основных будильников
+            // 1. Архивируем истёкшие напоминания (до всего остального)
+            ArchiveManager.archiveExpired(db)
+
+            // 2. Перепланирование активных будильников
+            val reminderDao = db.reminderDao()
+            val reminders = reminderDao.getEnabled()
             reminders.forEach { r ->
                 AlarmScheduler.cancel(this@MainActivity, r.id)
                 AlarmScheduler.schedule(this@MainActivity, r)
             }
 
-            // Сброс невалидных URI звуков
+            // 3. Сброс невалидных URI звуков
             val invalidReminders = reminders.filter {
                 !it.soundUri.isNullOrBlank() &&
                         !SoundResolver.isUriValid(this@MainActivity, it.soundUri)
@@ -69,7 +76,7 @@ class MainActivity : ComponentActivity() {
                 reminderDao.update(r.copy(soundUri = null))
             }
 
-            // Очистка «сиротских» каналов уведомлений
+            // 4. Очистка «сиротских» каналов уведомлений
             cleanupChannels(
                 reminders.mapNotNull { it.soundUri } +
                         listOfNotNull(
@@ -78,7 +85,7 @@ class MainActivity : ComponentActivity() {
                         )
             )
 
-            // Восстановление активных snooze
+            // 5. Восстановление активных переносов (snooze)
             SnoozeRestorer.restoreAll(this@MainActivity)
         }
 
@@ -123,7 +130,29 @@ fun AppNav() {
                 onAdd = { nav.navigate("edit/-1") },
                 onOpen = { id -> nav.navigate("view/$id") },
                 onMark = { id -> nav.navigate("mark/$id") },
-                onSettings = { nav.navigate("settings") }
+                onSettings = { nav.navigate("settings") },
+                onArchive = { nav.navigate("archive") }
+            )
+        }
+
+        composable("archive") {
+            ArchiveScreen(
+                onBack = { nav.navigateUp() },
+                onOpenHistory = { id -> nav.navigate("archive/$id") }
+            )
+        }
+
+        composable(
+            route = "archive/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.LongType })
+        ) { entry ->
+            val id = entry.arguments?.getLong("id") ?: -1L
+            ReminderHistoryScreen(
+                reminderId = id,
+                onBack = { nav.navigateUp() },
+                onCreateFromExample = { templateId ->
+                    nav.navigate("edit-from-template/$templateId")
+                }
             )
         }
 
@@ -156,6 +185,21 @@ fun AppNav() {
             EditReminderScreen(
                 vm = vm,
                 reminderId = id,
+                templateId = null,
+                onDone = { nav.navigateUp() }
+            )
+        }
+
+        composable(
+            route = "edit-from-template/{templateId}",
+            arguments = listOf(navArgument("templateId") { type = NavType.LongType })
+        ) { entry ->
+            val templateId = entry.arguments?.getLong("templateId") ?: -1L
+            val vm: ReminderViewModel = viewModel()
+            EditReminderScreen(
+                vm = vm,
+                reminderId = -1L,
+                templateId = templateId,
                 onDone = { nav.navigateUp() }
             )
         }

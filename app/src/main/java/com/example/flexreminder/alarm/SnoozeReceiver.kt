@@ -64,11 +64,21 @@ class SnoozeReceiver : BroadcastReceiver() {
                     val existing = dao.get(id, dateMillis)
                     val base = existing
                         ?: Iteration(reminderId = id, dateMillis = dateMillis)
+
+                    // Накапливаем историю переносов
+                    val newHistoryEntry = "$now:$minutes"
+                    val updatedHistory = if (base.snoozeHistory.isBlank()) {
+                        newHistoryEntry
+                    } else {
+                        "${base.snoozeHistory},$newHistoryEntry"
+                    }
+
                     dao.upsertByDate(
                         base.copy(
                             snoozeCount = base.snoozeCount + 1,
                             lastSnoozeAt = now,
-                            snoozeUntil = trigger
+                            snoozeUntil = trigger,
+                            snoozeHistory = updatedHistory
                         )
                     )
                 }
@@ -175,10 +185,6 @@ class SnoozeReceiver : BroadcastReceiver() {
         const val EXTRA_MINUTES = "extra_minutes"
         const val EXTRA_DATE_MILLIS = "extra_date_millis"
 
-        /**
-         * Собирает PendingIntent для срабатывания отложенного уведомления.
-         * Public — используется из [SnoozeRestorer] при восстановлении после ребута.
-         */
         fun buildSnoozeFirePI(
             context: Context,
             reminderId: Long,

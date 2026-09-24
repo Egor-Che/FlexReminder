@@ -45,6 +45,7 @@ fun ReminderCalendar(
     theme: AppTheme = AppTheme.PALETTE,
     colorIndex: Int? = null,
     onDateToggle: (Long) -> Unit = {},
+    onDateClick: ((Long) -> Unit)? = null,
     initialMonthMillis: Long = System.currentTimeMillis()
 ) {
     var displayYear by remember {
@@ -164,7 +165,13 @@ fun ReminderCalendar(
                             onHighlightColor = onHighlightColor,
                             todayColor = todayColor,
                             defaultTextColor = textColor,
-                            onClick = { onDateToggle(dayMillis) },
+                            onClick = {
+                                if (readOnly) {
+                                    onDateClick?.invoke(dayMillis)
+                                } else {
+                                    onDateToggle(dayMillis)
+                                }
+                            },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -201,12 +208,15 @@ private fun DayCell(
     }
     val isToday = dayMillis == today
 
+    // В режиме readOnly клик разрешён только если подсвечен (активный день)
+    val clickable = !readOnly || isSelected
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .padding(2.dp)
             .clip(CircleShape)
-            .then(if (!readOnly) Modifier.clickable { onClick() } else Modifier)
+            .then(if (clickable) Modifier.clickable { onClick() } else Modifier)
             .background(
                 when {
                     isSelected -> highlightColor

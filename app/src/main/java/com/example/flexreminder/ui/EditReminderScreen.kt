@@ -71,16 +71,18 @@ import java.util.Locale
 fun EditReminderScreen(
     vm: ReminderViewModel,
     reminderId: Long,
+    templateId: Long? = null,
     onDone: () -> Unit
 ) {
     val ctx = LocalContext.current
     val isNew = reminderId <= 0L
+    val isFromTemplate = templateId != null && templateId > 0L
 
     val settingsVm: SettingsViewModel = viewModel()
     val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
     val defaultSoundUri by settingsVm.defaultSoundUri.collectAsStateWithLifecycle()
 
-    var loaded by remember { mutableStateOf(isNew) }
+    var loaded by remember { mutableStateOf(isNew && !isFromTemplate) }
     var title by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
 
@@ -110,37 +112,73 @@ fun EditReminderScreen(
     var showTimePicker by remember { mutableStateOf(false) }
     var showSoundDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(reminderId) {
-        if (!isNew && !loaded) {
+    // Загрузка существующего напоминания или шаблона
+    LaunchedEffect(reminderId, templateId) {
+        if (!loaded) {
+            val sourceId = when {
+                isFromTemplate -> templateId!!
+                !isNew -> reminderId
+                else -> return@LaunchedEffect
+            }
             val r = withContext(Dispatchers.IO) {
-                AppDatabase.get(ctx).reminderDao().getById(reminderId)
+                AppDatabase.get(ctx).reminderDao().getById(sourceId)
             }
             if (r != null) {
-                title = r.title
-                notes = r.notes
-                mode = r.mode
-                startDate = r.startDate
-                endDate = r.endDate
-                daysOnText = r.daysOn.toString()
-                daysOffText = r.daysOff.toString()
-                customDates = r.customDates
-                hour = r.hour
-                minute = r.minute
-                enabled = r.enabled
-                silent = r.silent
-                colorIndex = r.colorIndex
-                soundUri = r.soundUri
-                if (r.mode == ScheduleMode.INTERVAL) {
-                    lastGeneratedKey = intervalKey(
-                        r.daysOn, r.daysOff, r.startDate, r.endDate
-                    )
+                if (isFromTemplate) {
+                    // Заполняем по шаблону с пересчётом дат
+                    title = r.title
+                    notes = r.notes
+                    mode = r.mode
+                    hour = r.hour
+                    minute = r.minute
+                    silent = r.silent
+                    colorIndex = r.colorIndex
+                    // Звук не копируем
+                    soundUri = null
+
+                    // Расчёт новых дат
+                    val today = todayMidnight()
+                    val oldDuration = (r.endDate ?: r.startDate) - r.startDate
+                    startDate = today
+                    endDate = today + oldDuration
+
+                    daysOnText = r.daysOn.toString()
+                    daysOffText = r.daysOff.toString()
+
+                    // Сдвиг customDates
+                    if (r.customDates.isNotEmpty()) {
+                        val shift = today - DateUtils.midnight(r.startDate)
+                        customDates = r.customDates.map { it + shift }.toSet()
+                    }
+
+                    enabled = true
+                } else {
+                    title = r.title
+                    notes = r.notes
+                    mode = r.mode
+                    startDate = r.startDate
+                    endDate = r.endDate
+                    daysOnText = r.daysOn.toString()
+                    daysOffText = r.daysOff.toString()
+                    customDates = r.customDates
+                    hour = r.hour
+                    minute = r.minute
+                    enabled = r.enabled
+                    silent = r.silent
+                    colorIndex = r.colorIndex
+                    soundUri = r.soundUri
+                    if (r.mode == ScheduleMode.INTERVAL) {
+                        lastGeneratedKey = intervalKey(
+                            r.daysOn, r.daysOff, r.startDate, r.endDate
+                        )
+                    }
                 }
             }
             loaded = true
         }
     }
 
-    // Обновляем отображаемое имя звука, когда меняется soundUri или глобальный дефолт
+    // Обновляем имя звука
     LaunchedEffect(soundUri, defaultSoundUri) {
         val effectiveUri = soundUri ?: defaultSoundUri
         soundName = if (effectiveUri.isNullOrBlank()) null
@@ -164,7 +202,15 @@ fun EditReminderScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isNew) "Новое напоминание" else "Редактирование") },
+                title = {
+                    Text(
+                        when {
+                            isFromTemplate -> "Новое по примеру"
+                            isNew -> "Новое напоминание"
+                            else -> "Редактирование"
+                        }
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onDone) {
                         Icon(
@@ -174,7 +220,7 @@ fun EditReminderScreen(
                     }
                 },
                 actions = {
-                    if (!isNew) {
+                    if (!isNew && !isFromTemplate) {
                         IconButton(onClick = {
                             vm.deleteById(reminderId) { onDone() }
                         }) {
@@ -385,7 +431,6 @@ fun EditReminderScreen(
                 )
             }
 
-            // Секция выбора конкретного звука — только если свитч включён и звук не выключен
             if (enabled && !silent) {
                 Spacer(Modifier.height(8.dp))
 
@@ -407,7 +452,7 @@ fun EditReminderScreen(
                             text = when {
                                 soundUri != null -> soundName ?: "Не найден"
                                 defaultSoundUri != null -> soundName ?: "Системный (из настроек)"
-                                else -> "Системный"
+                                else -> "Мелодия приложения"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 2
@@ -469,7 +514,7 @@ fun EditReminderScreen(
             Button(
                 onClick = {
                     val r = Reminder(
-                        id = if (isNew) 0L else reminderId,
+                        id = if (isNew || isFromTemplate) 0L else reminderId,
                         title = title.trim(),
                         notes = notes.trim(),
                         mode = mode,
@@ -543,7 +588,6 @@ fun EditReminderScreen(
         SoundPickerDialog(
             initialUri = soundUri ?: defaultSoundUri,
             onPicked = { picked ->
-                soundUri = picked?.takeIf { it != defaultSoundUri } ?: picked
                 soundUri = picked
                 showSoundDialog = false
             },

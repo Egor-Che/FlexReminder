@@ -19,10 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
@@ -71,7 +72,8 @@ fun ReminderListScreen(
     onAdd: () -> Unit,
     onOpen: (Long) -> Unit,
     onMark: (Long) -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onArchive: () -> Unit
 ) {
     val list by vm.reminders.collectAsStateWithLifecycle()
     val allIterations by vm.observeAllIterations()
@@ -99,6 +101,12 @@ fun ReminderListScreen(
             TopAppBar(
                 title = { Text("Мои напоминания") },
                 actions = {
+                    IconButton(onClick = onArchive) {
+                        Icon(
+                            imageVector = Icons.Default.Inventory2,
+                            contentDescription = "Архив"
+                        )
+                    }
                     IconButton(onClick = onSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -134,16 +142,15 @@ fun ReminderListScreen(
                 contentPadding = PaddingValues(8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(
+                itemsIndexed(
                     items = list,
-                    key = { it.id }
-                ) { r ->
-                    val itemIndex = list.indexOf(r)
+                    key = { _, r -> r.id }
+                ) { index, r ->
                     ReminderCard(
                         reminder = r,
                         iterations = iterationsByReminder[r.id].orEmpty(),
                         theme = appTheme,
-                        itemIndex = itemIndex,
+                        itemIndex = index,
                         onClick = { onOpen(r.id) },
                         onToggle = { vm.toggle(r) },
                         onToggleSilent = {
@@ -198,7 +205,8 @@ private fun ReminderCard(
                         Text(
                             reminder.notes,
                             style = MaterialTheme.typography.bodySmall,
-                            color = secondaryColor
+                            color = secondaryColor,
+                            maxLines = 2
                         )
                     }
 
