@@ -132,9 +132,12 @@
     <string name="dialog_theme_monochrome_desc">Только оттенки серого, без цветных акцентов</string>
     <string name="dialog_snooze_short_title">Короткий интервал</string>
     <string name="dialog_snooze_long_title">Длинный интервал</string>
-    <string name="label_snooze_minutes_field">Минут</string>
+    <string name="label_snooze_range_short">Диапазон от 1 до 60 минут</string>
+    <string name="label_snooze_range_long">Диапазон от 20 до 720 минут</string>
     <string name="label_snooze_presets">Быстрый выбор:</string>
-    <string name="label_snooze_range">Диапазон: 1 — 720 минут</string>
+    <string name="dialog_snooze_error_title">Некорректное значение</string>
+    <string name="dialog_snooze_error_short">Для короткого интервала выберите значение от 1 до 60 минут.</string>
+    <string name="dialog_snooze_error_long">Для длинного интервала выберите значение от 20 до 720 минут.</string>
     <string name="pattern_minutes_value">%1$d мин</string>
     <string name="pattern_hours_value">%1$d ч</string>
     <string name="pattern_hours_minutes_value">%1$d ч %2$d мин</string>
@@ -203,6 +206,7 @@
     <string name="unit_minutes_short">мин</string>
     <string name="unit_hours_short">ч</string>
     <string name="unit_items_short">шт.</string>
+    <string name="unit_minutes_compact">м</string>
 
     <!-- Периоды -->
     <string name="pattern_period_from_to">С %1$s по %2$s</string>

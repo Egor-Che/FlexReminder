@@ -32,13 +32,9 @@ class SettingsRepository private constructor(context: Context) {
     }
 
     suspend fun setSnoozeIntervals(short: Int, long: Int) {
-        val a = short.coerceIn(MIN_SNOOZE_MINUTES, MAX_SNOOZE_MINUTES)
-        val b = long.coerceIn(MIN_SNOOZE_MINUTES, MAX_SNOOZE_MINUTES)
-        val min = minOf(a, b)
-        val max = maxOf(a, b)
         dataStore.edit { prefs ->
-            prefs[KEY_SNOOZE_SHORT] = min
-            prefs[KEY_SNOOZE_LONG] = max
+            prefs[KEY_SNOOZE_SHORT] = short
+            prefs[KEY_SNOOZE_LONG] = long
         }
     }
 
@@ -66,10 +62,6 @@ class SettingsRepository private constructor(context: Context) {
 
     // ---------- Звук по умолчанию ----------
 
-    /**
-     * URI звука по умолчанию.
-     * null = использовать системный дефолт (канал reminders_loud).
-     */
     val defaultSoundUri: Flow<String?> = dataStore.data.map { prefs ->
         prefs[KEY_DEFAULT_SOUND_URI]
     }
@@ -85,17 +77,11 @@ class SettingsRepository private constructor(context: Context) {
     }
 
     suspend fun getDefaultSoundUri(): String? = defaultSoundUri.first()
-
     fun getDefaultSoundUriBlocking(): String? = runBlocking { defaultSoundUri.first() }
 
     companion object {
-        const val MIN_SNOOZE_MINUTES = 1
-        const val MAX_SNOOZE_MINUTES = 720
-
-        const val DEFAULT_SNOOZE_SHORT = 5
-        const val DEFAULT_SNOOZE_LONG = 60
-
-        val PRESETS = listOf(5, 10, 15, 30, 60, 120, 240, 720)
+        const val DEFAULT_SNOOZE_SHORT = 2
+        const val DEFAULT_SNOOZE_LONG = 30
 
         val DEFAULT_THEME = AppTheme.PALETTE
 

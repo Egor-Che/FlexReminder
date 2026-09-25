@@ -39,7 +39,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.flexreminder.R
 import com.example.flexreminder.data.AppTheme
-import com.example.flexreminder.data.SettingsRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +56,7 @@ fun SettingsScreen(
     val editingValue by vm.editingValue.collectAsStateWithLifecycle()
     val themeDialogOpen by vm.themeDialogOpen.collectAsStateWithLifecycle()
     val soundDialogOpen by vm.soundDialogOpen.collectAsStateWithLifecycle()
+    val snoozeError by vm.snoozeError.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -123,6 +123,13 @@ fun SettingsScreen(
             onValueChange = vm::updateEditingValue,
             onSave = vm::saveEditor,
             onDismiss = vm::closeEditor
+        )
+    }
+
+    if (snoozeError != null) {
+        SnoozeErrorDialog(
+            field = snoozeError!!,
+            onDismiss = vm::dismissSnoozeError
         )
     }
 
@@ -210,6 +217,10 @@ private fun SnoozeEditorDialog(
         SnoozeField.SHORT -> stringResource(R.string.dialog_snooze_short_title)
         SnoozeField.LONG -> stringResource(R.string.dialog_snooze_long_title)
     }
+    val rangeLabel = when (field) {
+        SnoozeField.SHORT -> stringResource(R.string.label_snooze_range_short)
+        SnoozeField.LONG -> stringResource(R.string.label_snooze_range_long)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -219,7 +230,7 @@ private fun SnoozeEditorDialog(
                 OutlinedTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    label = { Text(stringResource(R.string.label_snooze_minutes_field)) },
+                    label = { Text(rangeLabel) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
@@ -235,21 +246,13 @@ private fun SnoozeEditorDialog(
                 Spacer(Modifier.height(8.dp))
 
                 PresetRow(
-                    presets = SettingsRepository.PRESETS.take(4),
+                    presets = field.presets.take(4),
                     onPick = { onValueChange(it.toString()) }
                 )
                 Spacer(Modifier.height(6.dp))
                 PresetRow(
-                    presets = SettingsRepository.PRESETS.drop(4),
+                    presets = field.presets.drop(4),
                     onPick = { onValueChange(it.toString()) }
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                Text(
-                    stringResource(R.string.label_snooze_range),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -261,6 +264,27 @@ private fun SnoozeEditorDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        }
+    )
+}
+
+@Composable
+private fun SnoozeErrorDialog(
+    field: SnoozeField,
+    onDismiss: () -> Unit
+) {
+    val messageRes = when (field) {
+        SnoozeField.SHORT -> R.string.dialog_snooze_error_short
+        SnoozeField.LONG -> R.string.dialog_snooze_error_long
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_snooze_error_title)) },
+        text = { Text(stringResource(messageRes)) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.common_ok))
+            }
         }
     )
 }
@@ -366,13 +390,11 @@ private fun formatMinutes(minutes: Int): String = when {
     )
 }
 
+@Composable
 private fun formatPreset(minutes: Int): String = when {
-    minutes < 60 -> minutes.toString()
-    minutes == 60 -> "1ч"
-    minutes == 120 -> "2ч"
-    minutes == 240 -> "4ч"
-    minutes == 720 -> "12ч"
-    else -> "${minutes / 60}ч"
+    minutes < 60 -> "$minutes${stringResource(R.string.unit_minutes_compact)}"
+    minutes % 60 == 0 -> "${minutes / 60}${stringResource(R.string.unit_hours_short)}"
+    else -> "$minutes${stringResource(R.string.unit_minutes_compact)}"
 }
 
 @Composable

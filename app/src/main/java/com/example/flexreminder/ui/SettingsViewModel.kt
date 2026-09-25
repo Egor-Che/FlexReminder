@@ -14,7 +14,22 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-enum class SnoozeField { SHORT, LONG }
+enum class SnoozeField(
+    val minMinutes: Int,
+    val maxMinutes: Int,
+    val presets: List<Int>
+) {
+    SHORT(
+        minMinutes = 1,
+        maxMinutes = 60,
+        presets = listOf(1, 2, 3, 5, 10, 15, 30, 60)
+    ),
+    LONG(
+        minMinutes = 20,
+        maxMinutes = 720,
+        presets = listOf(20, 30, 60, 120, 180, 360, 480, 720)
+    )
+}
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -67,9 +82,6 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             null
         )
 
-    /**
-     * Отображаемое имя звука. null означает «Системный».
-     */
     val defaultSoundName: StateFlow<String?> = repo.defaultSoundUri
         .map { uri ->
             if (uri.isNullOrBlank()) null
@@ -102,6 +114,9 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _editingValue = MutableStateFlow("")
     val editingValue: StateFlow<String> = _editingValue.asStateFlow()
 
+    private val _snoozeError = MutableStateFlow<SnoozeField?>(null)
+    val snoozeError: StateFlow<SnoozeField?> = _snoozeError.asStateFlow()
+
     fun openEditor(field: SnoozeField) {
         _editingField.value = field
         _editingValue.value = when (field) {
@@ -113,28 +128,35 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     fun closeEditor() {
         _editingField.value = null
         _editingValue.value = ""
+        _snoozeError.value = null
     }
 
     fun updateEditingValue(newValue: String) {
+        // только цифры, до 3 символов (максимум 720)
         _editingValue.value = newValue.filter { it.isDigit() }.take(3)
     }
 
     fun saveEditor() {
         val field = _editingField.value ?: return
         val value = _editingValue.value.toIntOrNull() ?: return
-        val clamped = value.coerceIn(
-            SettingsRepository.MIN_SNOOZE_MINUTES,
-            SettingsRepository.MAX_SNOOZE_MINUTES
-        )
+
+        if (value !in field.minMinutes..field.maxMinutes) {
+            _snoozeError.value = field
+            return
+        }
 
         viewModelScope.launch {
             val currentShort = snoozeShort.value
             val currentLong = snoozeLong.value
             when (field) {
-                SnoozeField.SHORT -> repo.setSnoozeIntervals(clamped, currentLong)
-                SnoozeField.LONG -> repo.setSnoozeIntervals(currentShort, clamped)
+                SnoozeField.SHORT -> repo.setSnoozeIntervals(value, currentLong)
+                SnoozeField.LONG -> repo.setSnoozeIntervals(currentShort, value)
             }
             closeEditor()
         }
+    }
+
+    fun dismissSnoozeError() {
+        _snoozeError.value = null
     }
 }
