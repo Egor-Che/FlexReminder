@@ -232,9 +232,35 @@ FlexReminder/
         │           ├── ReminderPalette.kt
         │           └── Theme.kt
         └── res/
-            ├── drawable/ic_launcher.xml
-            ├── raw/default_ringtone.ogg
+            ├── drawable/
+            │   └── ic_launcher_background.xml
+            ├── mipmap-anydpi-v26/
+            │   ├── ic_launcher.xml
+            │   └── ic_launcher_round.xml
+            ├── mipmap-hdpi/
+            │   ├── ic_launcher.webp
+            │   ├── ic_launcher_foreground.webp
+            │   └── ic_launcher_round.webp
+            ├── mipmap-mdpi/
+            │   ├── ic_launcher.webp
+            │   ├── ic_launcher_foreground.webp
+            │   └── ic_launcher_round.webp
+            ├── mipmap-xhdpi/
+            │   ├── ic_launcher.webp
+            │   ├── ic_launcher_foreground.webp
+            │   └── ic_launcher_round.webp
+            ├── mipmap-xxhdpi/
+            │   ├── ic_launcher.webp
+            │   ├── ic_launcher_foreground.webp
+            │   └── ic_launcher_round.webp
+            ├── mipmap-xxxhdpi/
+            │   ├── ic_launcher.webp
+            │   ├── ic_launcher_foreground.webp
+            │   └── ic_launcher_round.webp
+            ├── raw/
+            │   └── default_ringtone.ogg
             └── values/
+                ├── colors.xml
                 ├── strings.xml
                 └── themes.xml
 ```
@@ -411,6 +437,14 @@ FlexReminder/
     При выносе строк в ресурсы все функции, использующие `stringResource(...)`,
     должны стать `@Composable`. Если функция вызывается из не-Composable контекста
     (ViewModel, `BroadcastReceiver`, утилита) — использовать `context.getString(...)`.
+	
+17. **Иконка приложения — адаптивная (Android 8+).**
+    Сгенерирована через Image Asset Studio в Android Studio.
+    Содержит: `mipmap-anydpi-v26/ic_launcher.xml` + `ic_launcher_round.xml`
+    (адаптивные), `drawable/ic_launcher_background.xml` (фон),
+    растр-версии в `mipmap-{mdpi..xxxhdpi}` для API < 26.
+    **Не удалять ни один из этих файлов** — иначе поломается отображение
+    иконки на части устройств.
 ---
 
 ## Как продолжить в новом чате
