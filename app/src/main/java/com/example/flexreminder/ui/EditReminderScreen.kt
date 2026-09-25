@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -68,6 +69,11 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+private enum class DateError {
+    START_AFTER_END,
+    END_BEFORE_START
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditReminderScreen(
@@ -113,6 +119,8 @@ fun EditReminderScreen(
     var showEndPicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showSoundDialog by remember { mutableStateOf(false) }
+
+    var dateError by remember { mutableStateOf<DateError?>(null) }
 
     LaunchedEffect(reminderId, templateId) {
         if (!loaded) {
@@ -582,7 +590,13 @@ fun EditReminderScreen(
         theme = appTheme,
         colorIndex = colorIndex,
         onDismiss = { showStartPicker = false },
-        onPicked = { startDate = it }
+        onPicked = { picked ->
+            startDate = picked
+            val end = endDate
+            if (end != null && picked > end) {
+                dateError = DateError.START_AFTER_END
+            }
+        }
     )
 
     DatePickerDialogWrapper(
@@ -591,7 +605,12 @@ fun EditReminderScreen(
         theme = appTheme,
         colorIndex = colorIndex,
         onDismiss = { showEndPicker = false },
-        onPicked = { endDate = it }
+        onPicked = { picked ->
+            endDate = picked
+            if (picked < startDate) {
+                dateError = DateError.END_BEFORE_START
+            }
+        }
     )
 
     TimePickerDialogWrapper(
@@ -615,6 +634,31 @@ fun EditReminderScreen(
                 showSoundDialog = false
             },
             onDismiss = { showSoundDialog = false }
+        )
+    }
+
+    dateError?.let { error ->
+        val title = when (error) {
+            DateError.START_AFTER_END ->
+                stringResource(R.string.dialog_date_error_start_title)
+            DateError.END_BEFORE_START ->
+                stringResource(R.string.dialog_date_error_end_title)
+        }
+        val message = when (error) {
+            DateError.START_AFTER_END ->
+                stringResource(R.string.dialog_date_error_start_message)
+            DateError.END_BEFORE_START ->
+                stringResource(R.string.dialog_date_error_end_message)
+        }
+        AlertDialog(
+            onDismissRequest = { dateError = null },
+            title = { Text(title) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { dateError = null }) {
+                    Text(stringResource(R.string.common_ok))
+                }
+            }
         )
     }
 }

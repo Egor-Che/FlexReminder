@@ -109,6 +109,12 @@
     <string name="label_selected_count">Выбрано: %1$d шт.</string>
     <string name="hint_custom_dates">Нажмите на дату, чтобы добавить или убрать её. Можно переключаться между месяцами — уже выбранные даты сохраняются.</string>
     <string name="action_clear_all_dates">Очистить все даты</string>
+	
+	<!-- Валидация дат -->
+    <string name="dialog_date_error_start_title">Некорректная дата начала</string>
+    <string name="dialog_date_error_start_message">Вы указали начало периода позднее его окончания. Проверьте пожалуйста даты.</string>
+    <string name="dialog_date_error_end_title">Некорректная дата окончания</string>
+    <string name="dialog_date_error_end_message">Вы указали окончание периода ранее его начала. Проверьте пожалуйста даты.</string>
 
     <!-- Настройки -->
     <string name="screen_settings_title">Настройки</string>
