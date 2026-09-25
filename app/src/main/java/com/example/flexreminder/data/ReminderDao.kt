@@ -9,9 +9,6 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ReminderDao {
 
-    /**
-     * Активные напоминания (не в архиве). Используется главным экраном.
-     */
     @Query(
         "SELECT * FROM reminders " +
                 "WHERE archivedAt IS NULL " +
@@ -19,10 +16,6 @@ interface ReminderDao {
     )
     fun observeAll(): Flow<List<Reminder>>
 
-    /**
-     * Архивные напоминания. Сортировка по убыванию archivedAt —
-     * недавно заархивированные вверху.
-     */
     @Query(
         "SELECT * FROM reminders " +
                 "WHERE archivedAt IS NOT NULL " +
@@ -30,10 +23,6 @@ interface ReminderDao {
     )
     fun observeArchived(): Flow<List<Reminder>>
 
-    /**
-     * Все активные (не в архиве) напоминания, у которых enabled = true.
-     * Используется для перепланирования будильников.
-     */
     @Query("SELECT * FROM reminders WHERE enabled = 1 AND archivedAt IS NULL")
     suspend fun getEnabled(): List<Reminder>
 
@@ -43,10 +32,6 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE id = :id LIMIT 1")
     fun observeById(id: Long): Flow<Reminder?>
 
-    /**
-     * Архивирует все напоминания, у которых endDate истёк и которые
-     * ещё не в архиве. Возвращает количество заархивированных.
-     */
     @Query(
         "UPDATE reminders " +
                 "SET archivedAt = :now " +
@@ -56,10 +41,6 @@ interface ReminderDao {
     )
     suspend fun archiveExpired(now: Long, todayMidnight: Long): Int
 
-    /**
-     * ID всех напоминаний, которые подлежат архивации прямо сейчас.
-     * Нужно, чтобы перед архивацией закрыть их pending-итерации.
-     */
     @Query(
         "SELECT id FROM reminders " +
                 "WHERE endDate IS NOT NULL " +
@@ -67,6 +48,19 @@ interface ReminderDao {
                 "AND archivedAt IS NULL"
     )
     suspend fun getIdsToArchive(todayMidnight: Long): List<Long>
+
+    /**
+     * ID всех архивных напоминаний. Нужны, чтобы удалить их итерации перед
+     * массовым удалением.
+     */
+    @Query("SELECT id FROM reminders WHERE archivedAt IS NOT NULL")
+    suspend fun getArchivedIds(): List<Long>
+
+    /**
+     * Удаляет все архивные напоминания. Возвращает количество удалённых.
+     */
+    @Query("DELETE FROM reminders WHERE archivedAt IS NOT NULL")
+    suspend fun deleteAllArchived(): Int
 
     @Insert
     suspend fun insert(r: Reminder): Long

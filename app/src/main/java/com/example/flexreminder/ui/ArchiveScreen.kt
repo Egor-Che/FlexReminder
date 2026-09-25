@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,11 +23,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,6 +47,7 @@ import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Reminder
 import com.example.flexreminder.data.ScheduleMode
 import com.example.flexreminder.ui.theme.AppThemeColors
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -51,7 +61,15 @@ fun ArchiveScreen(
     val vm: ArchiveViewModel = viewModel()
     val archived by vm.archived.collectAsStateWithLifecycle()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    var showClearDialog by remember { mutableStateOf(false) }
+
+    val clearedMessage = stringResource(R.string.snackbar_archive_cleared)
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.screen_archive_title)) },
@@ -60,6 +78,17 @@ fun ArchiveScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back)
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { showClearDialog = true },
+                        enabled = archived.isNotEmpty()
+                    ) {
+                        Icon(
+                            Icons.Default.CleaningServices,
+                            contentDescription = stringResource(R.string.screen_archive_clear)
                         )
                     }
                 }
@@ -101,6 +130,34 @@ fun ArchiveScreen(
             }
         }
     }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text(stringResource(R.string.dialog_clear_archive_title)) },
+            text = { Text(stringResource(R.string.dialog_clear_archive_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearDialog = false
+                    vm.clearArchive {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = clearedMessage,
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+                }) {
+                    Text(stringResource(R.string.dialog_clear_archive_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -109,7 +166,6 @@ private fun ArchiveCard(
     itemIndex: Int,
     onClick: () -> Unit
 ) {
-    // Архив — всегда серая зебра, независимо от активной темы
     val cardBg = if (itemIndex % 2 == 0)
         AppThemeColors.MonoCardEven
     else
@@ -170,13 +226,9 @@ private fun ArchiveCard(
                 val start = df.format(Date(reminder.startDate))
                 val end = reminder.endDate?.let { df.format(Date(it)) }
                 if (end != null) {
-                    append(
-                        stringResource(R.string.pattern_period_from_to, start, end)
-                    )
+                    append(stringResource(R.string.pattern_period_from_to, start, end))
                 } else {
-                    append(
-                        stringResource(R.string.pattern_period_from, start)
-                    )
+                    append(stringResource(R.string.pattern_period_from, start))
                 }
             }
             Text(

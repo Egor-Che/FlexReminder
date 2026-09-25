@@ -62,6 +62,11 @@
     <!-- Архив -->
     <string name="screen_archive_title">Архив напоминаний</string>
     <string name="screen_archive_empty">Архив пуст\n\nЗдесь будут напоминания, которые закончились — после наступления даты окончания.</string>
+	<string name="screen_archive_clear">Очистить весь архив</string>
+    <string name="dialog_clear_archive_title">Очистить весь архив?</string>
+    <string name="dialog_clear_archive_message">Все архивные напоминания и их истории срабатываний будут удалены безвозвратно.\nВосстановить данные невозможно.</string>
+    <string name="dialog_clear_archive_confirm">Очистить</string>
+    <string name="snackbar_archive_cleared">Архив очищен</string>
 
     <!-- История напоминания -->
     <string name="screen_history_title">История напоминания</string>
