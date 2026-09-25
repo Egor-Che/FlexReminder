@@ -1,12 +1,10 @@
 package com.example.flexreminder.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,10 +28,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.flexreminder.R
+import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Reminder
 import com.example.flexreminder.data.ScheduleMode
 import com.example.flexreminder.ui.theme.AppThemeColors
@@ -53,12 +54,12 @@ fun ArchiveScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Архив напоминаний") },
+                title = { Text(stringResource(R.string.screen_archive_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 }
@@ -74,8 +75,7 @@ fun ArchiveScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Архив пуст\n\nЗдесь будут напоминания, которые закончились — " +
-                            "после наступления даты окончания.",
+                    text = stringResource(R.string.screen_archive_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
@@ -115,14 +115,14 @@ private fun ArchiveCard(
     else
         AppThemeColors.MonoCardOdd
 
-    val contentColor = AppThemeColors.cardContentColor(
-        com.example.flexreminder.data.AppTheme.MONOCHROME
-    )
-    val secondaryColor = AppThemeColors.cardContentColorSecondary(
-        com.example.flexreminder.data.AppTheme.MONOCHROME
-    )
+    val monoTheme = AppTheme.MONOCHROME
+    val contentColor = AppThemeColors.cardContentColor(monoTheme)
+    val secondaryColor = AppThemeColors.cardContentColorSecondary(monoTheme)
 
-    val df = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
+    val datePattern = stringResource(R.string.format_date_short)
+    val df = remember(datePattern) {
+        SimpleDateFormat(datePattern, Locale.getDefault())
+    }
 
     Card(
         modifier = Modifier
@@ -149,19 +149,17 @@ private fun ArchiveCard(
 
             Spacer(Modifier.height(6.dp))
 
+            val scheduleText = when (reminder.mode) {
+                ScheduleMode.INTERVAL -> formatPattern(
+                    reminder.daysOn, reminder.daysOff
+                )
+                ScheduleMode.CUSTOM_DATES -> stringResource(
+                    R.string.pattern_custom_dates_count,
+                    reminder.customDates.size
+                )
+            }
             Text(
-                text = buildString {
-                    when (reminder.mode) {
-                        ScheduleMode.INTERVAL -> {
-                            append(formatPattern(reminder.daysOn, reminder.daysOff))
-                        }
-                        ScheduleMode.CUSTOM_DATES -> {
-                            append("Конкретные даты: ")
-                            append(reminder.customDates.size)
-                            append(" шт.")
-                        }
-                    }
-                },
+                text = scheduleText,
                 style = MaterialTheme.typography.bodySmall,
                 color = secondaryColor
             )
@@ -169,11 +167,16 @@ private fun ArchiveCard(
             Spacer(Modifier.height(2.dp))
 
             val periodText = buildString {
-                append("С ")
-                append(df.format(Date(reminder.startDate)))
-                reminder.endDate?.let {
-                    append(" по ")
-                    append(df.format(Date(it)))
+                val start = df.format(Date(reminder.startDate))
+                val end = reminder.endDate?.let { df.format(Date(it)) }
+                if (end != null) {
+                    append(
+                        stringResource(R.string.pattern_period_from_to, start, end)
+                    )
+                } else {
+                    append(
+                        stringResource(R.string.pattern_period_from, start)
+                    )
                 }
             }
             Text(

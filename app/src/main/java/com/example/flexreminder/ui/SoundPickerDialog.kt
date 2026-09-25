@@ -37,17 +37,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.flexreminder.R
 
 @Composable
 fun SoundPickerDialog(
@@ -95,7 +97,6 @@ fun SoundPickerDialog(
                 .fillMaxHeight(0.92f)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Заголовок
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -103,7 +104,7 @@ fun SoundPickerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Выбрать звук",
+                        text = stringResource(R.string.screen_sound_picker_title),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f)
                     )
@@ -113,12 +114,11 @@ fun SoundPickerDialog(
                     }) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Закрыть"
+                            contentDescription = stringResource(R.string.common_close)
                         )
                     }
                 }
 
-                // Текущее значение + Play/Stop
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -127,12 +127,13 @@ fun SoundPickerDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Выбрано:",
+                            text = stringResource(R.string.label_sound_selected),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = currentName ?: "Мелодия приложения",
+                            text = currentName
+                                ?: stringResource(R.string.sound_builtin),
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -144,14 +145,16 @@ fun SoundPickerDialog(
                         Icon(
                             imageVector = if (playing) Icons.Default.Stop
                             else Icons.Default.PlayArrow,
-                            contentDescription = if (playing) "Остановить" else "Прослушать"
+                            contentDescription = stringResource(
+                                if (playing) R.string.sound_action_stop
+                                else R.string.sound_action_play
+                            )
                         )
                     }
                 }
 
                 Spacer(Modifier.height(4.dp))
 
-                // Табы категорий
                 TabRow(
                     selectedTabIndex = activeCategory.ordinal,
                     containerColor = MaterialTheme.colorScheme.surface
@@ -160,14 +163,13 @@ fun SoundPickerDialog(
                         Tab(
                             selected = activeCategory == category,
                             onClick = { vm.setCategory(category) },
-                            text = { Text(category.title) }
+                            text = { Text(stringResource(category.titleRes)) }
                         )
                     }
                 }
 
                 Divider()
 
-                // Список звуков
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -188,7 +190,7 @@ fun SoundPickerDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "Звуки не найдены",
+                                    stringResource(R.string.sound_picker_empty),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -215,7 +217,6 @@ fun SoundPickerDialog(
 
                 Divider()
 
-                // Нижние кнопки
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -232,7 +233,7 @@ fun SoundPickerDialog(
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Свой файл")
+                            Text(stringResource(R.string.sound_picker_my_file))
                         }
                         OutlinedButton(
                             onClick = {
@@ -241,7 +242,7 @@ fun SoundPickerDialog(
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Сбросить")
+                            Text(stringResource(R.string.sound_picker_reset))
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -252,12 +253,12 @@ fun SoundPickerDialog(
                         TextButton(onClick = {
                             vm.stop()
                             onDismiss()
-                        }) { Text("Отмена") }
+                        }) { Text(stringResource(R.string.common_cancel)) }
                         Spacer(Modifier.width(8.dp))
                         TextButton(onClick = {
                             vm.stop()
                             onPicked(currentUri)
-                        }) { Text("Сохранить") }
+                        }) { Text(stringResource(R.string.common_save)) }
                     }
                 }
             }

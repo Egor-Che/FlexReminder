@@ -46,9 +46,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.flexreminder.R
 import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.data.IterationStatus
 import com.example.flexreminder.ui.theme.AppThemeColors
@@ -102,10 +105,11 @@ fun MarkIterationsScreen(
         }
     }
 
+    val systemHintMessage = stringResource(R.string.mark_system_hint)
     val showSystemHint: () -> Unit = {
         scope.launch {
             snackbarHostState.showSnackbar(
-                message = "Чтобы изменить, нажмите на галочку",
+                message = systemHintMessage,
                 duration = SnackbarDuration.Short
             )
         }
@@ -116,12 +120,12 @@ fun MarkIterationsScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
-                    title = { Text("Отметки") },
+                    title = { Text(stringResource(R.string.screen_mark_title)) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Назад"
+                                contentDescription = stringResource(R.string.common_back)
                             )
                         }
                     }
@@ -129,7 +133,7 @@ fun MarkIterationsScreen(
             }
         ) { padding ->
             Text(
-                "Загрузка…",
+                stringResource(R.string.common_loading),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -147,12 +151,14 @@ fun MarkIterationsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Отметки: ${r.title}") },
+                title = {
+                    Text(stringResource(R.string.screen_mark_title_with_name, r.title))
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 }
@@ -174,16 +180,16 @@ fun MarkIterationsScreen(
                 BulkActionButton(
                     icon = Icons.Default.Check,
                     iconTint = completeColor,
-                    line1 = "Выполнить всё",
-                    line2 = "прошедшее",
+                    line1 = stringResource(R.string.mark_bulk_complete_line1),
+                    line2 = stringResource(R.string.mark_bulk_complete_line2),
                     onClick = { showCompleteAllDialog = true },
                     modifier = Modifier.weight(1f)
                 )
                 BulkActionButton(
                     icon = Icons.Default.SkipNext,
                     iconTint = skipColor,
-                    line1 = "Пропустить всё",
-                    line2 = "будущее",
+                    line1 = stringResource(R.string.mark_bulk_skip_line1),
+                    line2 = stringResource(R.string.mark_bulk_skip_line2),
                     onClick = { showSkipAllDialog = true },
                     modifier = Modifier.weight(1f)
                 )
@@ -200,7 +206,10 @@ fun MarkIterationsScreen(
                     onCheckedChange = { showOnlyMarked = it }
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Показать только с отметками", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.mark_show_only_marked),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
 
             HorizontalDivider()
@@ -213,8 +222,10 @@ fun MarkIterationsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        if (showOnlyMarked) "Нет отмеченных итераций"
-                        else "Нет итераций в этом диапазоне",
+                        text = stringResource(
+                            if (showOnlyMarked) R.string.mark_empty_marked
+                            else R.string.mark_empty_all
+                        ),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -274,7 +285,7 @@ fun MarkIterationsScreen(
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     )
                 ) {
-                    Text("Отменить все изменения сессии")
+                    Text(stringResource(R.string.mark_rollback_button))
                 }
             }
         }
@@ -283,30 +294,35 @@ fun MarkIterationsScreen(
     if (showCompleteAllDialog) {
         val count = vm.countCompletablePast()
         val range = vm.pastRange()
+        val datePattern = stringResource(R.string.format_date_short)
+        val df = remember(datePattern) {
+            SimpleDateFormat(datePattern, Locale.getDefault())
+        }
+        val rangeText = if (range != null) {
+            stringResource(
+                R.string.mark_dialog_count_range,
+                count,
+                df.format(Date(range.first)),
+                df.format(Date(range.second))
+            )
+        } else {
+            stringResource(R.string.label_selected_count, count)
+        }
+
         AlertDialog(
             onDismissRequest = { showCompleteAllDialog = false },
-            title = { Text("Отметить прошедшее выполненным?") },
-            text = {
-                Text(
-                    buildString {
-                        append("Будет отмечено: $count итераций\n")
-                        if (range != null) {
-                            append("Диапазон: ")
-                            append(formatDialogDate(range.first))
-                            append(" — ")
-                            append(formatDialogDate(range.second))
-                        }
-                    }
-                )
-            },
+            title = { Text(stringResource(R.string.mark_dialog_complete_title)) },
+            text = { Text(rangeText) },
             confirmButton = {
                 TextButton(onClick = {
                     showCompleteAllDialog = false
                     vm.completeAllPast()
-                }) { Text("Отметить") }
+                }) { Text(stringResource(R.string.mark_dialog_complete_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCompleteAllDialog = false }) { Text("Отмена") }
+                TextButton(onClick = { showCompleteAllDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -314,30 +330,35 @@ fun MarkIterationsScreen(
     if (showSkipAllDialog) {
         val count = vm.countSkippableFuture()
         val range = vm.futureRange()
+        val datePattern = stringResource(R.string.format_date_short)
+        val df = remember(datePattern) {
+            SimpleDateFormat(datePattern, Locale.getDefault())
+        }
+        val rangeText = if (range != null) {
+            stringResource(
+                R.string.mark_dialog_count_range,
+                count,
+                df.format(Date(range.first)),
+                df.format(Date(range.second))
+            )
+        } else {
+            stringResource(R.string.label_selected_count, count)
+        }
+
         AlertDialog(
             onDismissRequest = { showSkipAllDialog = false },
-            title = { Text("Отметить будущее пропущенным?") },
-            text = {
-                Text(
-                    buildString {
-                        append("Будет отмечено: $count итераций\n")
-                        if (range != null) {
-                            append("Диапазон: ")
-                            append(formatDialogDate(range.first))
-                            append(" — ")
-                            append(formatDialogDate(range.second))
-                        }
-                    }
-                )
-            },
+            title = { Text(stringResource(R.string.mark_dialog_skip_title)) },
+            text = { Text(rangeText) },
             confirmButton = {
                 TextButton(onClick = {
                     showSkipAllDialog = false
                     vm.skipAllFuture()
-                }) { Text("Пропустить") }
+                }) { Text(stringResource(R.string.mark_dialog_skip_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showSkipAllDialog = false }) { Text("Отмена") }
+                TextButton(onClick = { showSkipAllDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -345,16 +366,18 @@ fun MarkIterationsScreen(
     if (showRollbackDialog) {
         AlertDialog(
             onDismissRequest = { showRollbackDialog = false },
-            title = { Text("Отменить все изменения сессии?") },
-            text = { Text("Все статусы, изменённые за эту сессию, будут возвращены к исходному состоянию.") },
+            title = { Text(stringResource(R.string.mark_dialog_rollback_title)) },
+            text = { Text(stringResource(R.string.mark_dialog_rollback_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     showRollbackDialog = false
                     vm.rollbackSession()
-                }) { Text("Отменить изменения") }
+                }) { Text(stringResource(R.string.mark_dialog_rollback_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showRollbackDialog = false }) { Text("Отмена") }
+                TextButton(onClick = { showRollbackDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -362,7 +385,7 @@ fun MarkIterationsScreen(
 
 @Composable
 private fun BulkActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     iconTint: androidx.compose.ui.graphics.Color,
     line1: String,
     line2: String,
@@ -403,8 +426,3 @@ private fun BulkActionButton(
         }
     }
 }
-
-private val dialogDateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-
-private fun formatDialogDate(millis: Long): String =
-    dialogDateFormat.format(Date(millis))

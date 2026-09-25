@@ -37,9 +37,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.flexreminder.R
 import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.alarm.ReminderLogic
 import com.example.flexreminder.data.AppTheme
@@ -65,18 +67,25 @@ fun ViewReminderScreen(
     val settingsVm: SettingsViewModel = viewModel()
     val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
 
-    val dfShort = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
-    val dfFull = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()) }
+    val dateShortPattern = stringResource(R.string.format_date_short)
+    val dateTimePattern = stringResource(R.string.format_date_time)
+
+    val dfShort = remember(dateShortPattern) {
+        SimpleDateFormat(dateShortPattern, Locale.getDefault())
+    }
+    val dfFull = remember(dateTimePattern) {
+        SimpleDateFormat(dateTimePattern, Locale.getDefault())
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Просмотр") },
+                title = { Text(stringResource(R.string.screen_view_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 },
@@ -85,7 +94,10 @@ fun ViewReminderScreen(
                         IconButton(onClick = {
                             vm.deleteById(reminderId) { onBack() }
                         }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Удалить")
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.common_delete)
+                            )
                         }
                     }
                 }
@@ -95,7 +107,7 @@ fun ViewReminderScreen(
         val r = reminder
         if (r == null) {
             Text(
-                "Загрузка…",
+                stringResource(R.string.common_loading),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
@@ -141,33 +153,54 @@ fun ViewReminderScreen(
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Время: " + String.format(
-                                Locale.getDefault(), "%02d:%02d", r.hour, r.minute
+                            text = stringResource(
+                                R.string.pattern_time_label,
+                                String.format(
+                                    Locale.getDefault(), "%02d:%02d", r.hour, r.minute
+                                )
                             ),
                             style = MaterialTheme.typography.bodyMedium,
                             color = contentColor
                         )
                         Spacer(Modifier.width(16.dp))
-                        SoundLabel(silent = r.silent, color = contentColor)
+                        SoundLabel(
+                            silent = r.silent,
+                            enabled = true,
+                            color = contentColor
+                        )
                     }
 
                     Spacer(Modifier.height(8.dp))
 
+                    val scheduleText = when (r.mode) {
+                        ScheduleMode.INTERVAL -> formatPattern(r.daysOn, r.daysOff)
+                        ScheduleMode.CUSTOM_DATES -> stringResource(
+                            R.string.pattern_custom_dates_count,
+                            r.customDates.size
+                        )
+                    }
                     Text(
-                        text = when (r.mode) {
-                            ScheduleMode.INTERVAL -> formatPattern(r.daysOn, r.daysOff)
-                            ScheduleMode.CUSTOM_DATES -> "Конкретные даты: ${r.customDates.size} шт."
-                        },
+                        text = scheduleText,
                         style = MaterialTheme.typography.bodyMedium,
                         color = accentColor
                     )
 
                     if (r.mode == ScheduleMode.INTERVAL) {
                         Spacer(Modifier.height(4.dp))
+                        val periodText = if (r.endDate != null) {
+                            stringResource(
+                                R.string.pattern_period_label_from_to,
+                                dfShort.format(Date(r.startDate)),
+                                dfShort.format(Date(r.endDate))
+                            )
+                        } else {
+                            stringResource(
+                                R.string.pattern_period_label_from,
+                                dfShort.format(Date(r.startDate))
+                            )
+                        }
                         Text(
-                            "Период: с ${dfShort.format(Date(r.startDate))}" +
-                                    (r.endDate?.let { " по ${dfShort.format(Date(it))}" }
-                                        ?: " (бессрочно)"),
+                            text = periodText,
                             style = MaterialTheme.typography.bodySmall,
                             color = secondaryColor
                         )
@@ -176,8 +209,11 @@ fun ViewReminderScreen(
                         if (sorted.isNotEmpty()) {
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Первая: ${dfShort.format(Date(sorted.first()))}, " +
-                                        "последняя: ${dfShort.format(Date(sorted.last()))}",
+                                text = stringResource(
+                                    R.string.pattern_first_last_dates,
+                                    dfShort.format(Date(sorted.first())),
+                                    dfShort.format(Date(sorted.last()))
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = secondaryColor
                             )
@@ -188,14 +224,17 @@ fun ViewReminderScreen(
                     if (r.enabled && next != null) {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Следующее: ${dfFull.format(Date(next))}",
+                            text = stringResource(
+                                R.string.pattern_next_trigger,
+                                dfFull.format(Date(next))
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = accentColor
                         )
                     } else if (r.enabled) {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Период завершён — отредактируйте расписание",
+                            text = stringResource(R.string.view_period_finished),
                             style = MaterialTheme.typography.bodySmall,
                             color = AppThemeColors.skippedSystem(appTheme)
                         )
@@ -216,7 +255,7 @@ fun ViewReminderScreen(
                             )
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Включено", color = contentColor)
+                        Text(stringResource(R.string.label_enabled), color = contentColor)
 
                         Spacer(Modifier.width(24.dp))
 
@@ -242,8 +281,10 @@ fun ViewReminderScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = if (r.mode == ScheduleMode.INTERVAL) "Расписание на месяц"
-                else "Выбранные даты",
+                text = stringResource(
+                    if (r.mode == ScheduleMode.INTERVAL) R.string.view_schedule_month
+                    else R.string.view_selected_dates
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 color = contentColor
             )
@@ -285,7 +326,7 @@ fun ViewReminderScreen(
             ) {
                 Icon(Icons.Default.Edit, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Редактировать")
+                Text(stringResource(R.string.action_edit))
             }
 
             Spacer(Modifier.height(24.dp))
@@ -296,7 +337,7 @@ fun ViewReminderScreen(
 @Composable
 private fun SoundLabel(
     silent: Boolean,
-    enabled: Boolean = true,
+    enabled: Boolean,
     color: Color
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -311,7 +352,10 @@ private fun SoundLabel(
         )
         Spacer(Modifier.width(6.dp))
         Text(
-            text = if (silent || !enabled) "Без звука" else "Со звуком",
+            text = stringResource(
+                if (silent || !enabled) R.string.label_sound_off
+                else R.string.label_sound_on
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = color
         )

@@ -14,12 +14,13 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.flexreminder.MainActivity
+import com.example.flexreminder.R
 
 object Notifications {
 
     const val EXTRA_SILENT = "extra_silent"
 
-    /** Максимальное количество snooze на одну итерацию. */
+    /** Максимальное количество переносов на одну итерацию. */
     const val MAX_SNOOZE_COUNT = 5
 
     data class ActionFlags(
@@ -65,20 +66,21 @@ object Notifications {
         }
     }
 
-    fun formatSnoozeLabel(minutes: Int): String = when {
-        minutes < 60 -> "Отложить $minutes мин"
-        minutes == 60 -> "Отложить 1 час"
-        minutes % 60 == 0 -> "Отложить ${minutes / 60} ч"
-        else -> "Отложить ${minutes / 60} ч ${minutes % 60} мин"
+    fun formatSnoozeLabel(context: Context, minutes: Int): String = when {
+        minutes < 60 -> context.getString(
+            R.string.notification_snooze_minutes, minutes
+        )
+        minutes == 60 -> context.getString(R.string.notification_snooze_one_hour)
+        minutes % 60 == 0 -> context.getString(
+            R.string.notification_snooze_hours, minutes / 60
+        )
+        else -> context.getString(
+            R.string.notification_snooze_hours_minutes,
+            minutes / 60,
+            minutes % 60
+        )
     }
 
-    /**
-     * Создаёт базовые каналы:
-     *  - reminders_loud — со встроенной мелодией приложения.
-     *  - reminders_silent — без звука.
-     *
-     * Кастомные каналы создаются лениво в NotificationChannels.
-     */
     fun ensureChannels(context: Context) {
         val mgr = context.getSystemService(NotificationManager::class.java) ?: return
 
@@ -91,10 +93,10 @@ object Notifications {
 
             val c = NotificationChannel(
                 NotificationChannels.CHANNEL_LOUD,
-                "Напоминания (со звуком)",
+                context.getString(R.string.notification_channel_loud_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Напоминания со звуком и вибрацией"
+                description = context.getString(R.string.notification_channel_loud_desc)
                 setSound(builtinUri, attrs)
             }
             mgr.createNotificationChannel(c)
@@ -103,10 +105,10 @@ object Notifications {
         if (mgr.getNotificationChannel(NotificationChannels.CHANNEL_SILENT) == null) {
             val c = NotificationChannel(
                 NotificationChannels.CHANNEL_SILENT,
-                "Напоминания (беззвучные)",
+                context.getString(R.string.notification_channel_silent_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Тихие напоминания — только в шторке"
+                description = context.getString(R.string.notification_channel_silent_desc)
                 setSound(null, null)
                 enableVibration(false)
                 enableLights(false)
@@ -167,28 +169,28 @@ object Notifications {
             .setContentIntent(contentPi)
             .addAction(
                 android.R.drawable.checkbox_on_background,
-                "Выполнено",
+                context.getString(R.string.notification_action_complete),
                 markCompleted
             )
 
         if (showSnoozeShort) {
             builder.addAction(
                 android.R.drawable.ic_menu_recent_history,
-                formatSnoozeLabel(snoozeShortMinutes),
+                formatSnoozeLabel(context, snoozeShortMinutes),
                 snoozeShortPi
             )
         }
         if (showSnoozeLong) {
             builder.addAction(
                 android.R.drawable.ic_menu_recent_history,
-                formatSnoozeLabel(snoozeLongMinutes),
+                formatSnoozeLabel(context, snoozeLongMinutes),
                 snoozeLongPi
             )
         }
         if (showSkip) {
             builder.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
-                "Пропустить",
+                context.getString(R.string.notification_action_skip),
                 markSkipped
             )
         }

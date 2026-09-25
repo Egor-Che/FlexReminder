@@ -4,8 +4,10 @@ import android.app.Application
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.flexreminder.R
 import com.example.flexreminder.alarm.SoundResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +16,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class SoundCategory(val ringtoneType: Int, val title: String) {
-    RINGTONE(RingtoneManager.TYPE_RINGTONE, "Звонки"),
-    NOTIFICATION(RingtoneManager.TYPE_NOTIFICATION, "Уведомления"),
-    ALARM(RingtoneManager.TYPE_ALARM, "Будильники")
+enum class SoundCategory(
+    val ringtoneType: Int,
+    @StringRes val titleRes: Int
+) {
+    RINGTONE(
+        RingtoneManager.TYPE_RINGTONE,
+        R.string.sound_category_ringtones
+    ),
+    NOTIFICATION(
+        RingtoneManager.TYPE_NOTIFICATION,
+        R.string.sound_category_notifications
+    ),
+    ALARM(
+        RingtoneManager.TYPE_ALARM,
+        R.string.sound_category_alarms
+    )
 }
 
 class SoundPickerViewModel(app: Application) : AndroidViewModel(app) {
@@ -56,7 +70,7 @@ class SoundPickerViewModel(app: Application) : AndroidViewModel(app) {
     private fun refreshCurrentName() {
         val uri = _currentUri.value
         if (uri.isNullOrBlank()) {
-            _currentName.value = "Мелодия приложения"
+            _currentName.value = null
             return
         }
         viewModelScope.launch {
@@ -90,7 +104,7 @@ class SoundPickerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clear() {
         _currentUri.value = null
-        _currentName.value = "Мелодия приложения"
+        _currentName.value = null
     }
 
     fun togglePlay() {
@@ -99,7 +113,6 @@ class SoundPickerViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun play() {
         val uri = _currentUri.value
-        // Если URI null — играем встроенную мелодию
         val effectiveUri = uri ?: SoundResolver.getBuiltinSoundUri(getApplication())
         try {
             val r = RingtoneManager.getRingtone(

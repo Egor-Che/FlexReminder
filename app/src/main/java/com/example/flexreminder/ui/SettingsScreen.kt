@@ -32,10 +32,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.flexreminder.R
 import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.SettingsRepository
 
@@ -59,12 +61,12 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Настройки") },
+                title = { Text(stringResource(R.string.screen_settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 }
@@ -77,15 +79,15 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            SectionHeader("Snooze (отложить напоминание)")
+            SectionHeader(stringResource(R.string.section_snooze))
 
             SettingRow(
-                title = "Короткий интервал",
+                title = stringResource(R.string.label_snooze_short),
                 subtitle = formatMinutes(snoozeShort),
                 onClick = { vm.openEditor(SnoozeField.SHORT) }
             )
             SettingRow(
-                title = "Длинный интервал",
+                title = stringResource(R.string.label_snooze_long),
                 subtitle = formatMinutes(snoozeLong),
                 onClick = { vm.openEditor(SnoozeField.LONG) }
             )
@@ -93,21 +95,21 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
             HorizontalDivider()
 
-            SectionHeader("Уведомления")
+            SectionHeader(stringResource(R.string.section_notifications))
 
             SettingRow(
-                title = "Звук по умолчанию",
-                subtitle = defaultSoundName ?: "Мелодия приложения",
+                title = stringResource(R.string.label_default_sound),
+                subtitle = defaultSoundName ?: stringResource(R.string.sound_builtin),
                 onClick = { vm.openSoundDialog() }
             )
 
             Spacer(Modifier.height(8.dp))
             HorizontalDivider()
 
-            SectionHeader("Внешний вид")
+            SectionHeader(stringResource(R.string.section_appearance))
 
             SettingRow(
-                title = "Тема",
+                title = stringResource(R.string.label_theme),
                 subtitle = themeLabel(appTheme),
                 onClick = { vm.openThemeDialog() }
             )
@@ -205,8 +207,8 @@ private fun SnoozeEditorDialog(
     onDismiss: () -> Unit
 ) {
     val title = when (field) {
-        SnoozeField.SHORT -> "Короткий интервал"
-        SnoozeField.LONG -> "Длинный интервал"
+        SnoozeField.SHORT -> stringResource(R.string.dialog_snooze_short_title)
+        SnoozeField.LONG -> stringResource(R.string.dialog_snooze_long_title)
     }
 
     AlertDialog(
@@ -217,7 +219,7 @@ private fun SnoozeEditorDialog(
                 OutlinedTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    label = { Text("Минут") },
+                    label = { Text(stringResource(R.string.label_snooze_minutes_field)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
@@ -226,7 +228,7 @@ private fun SnoozeEditorDialog(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    "Быстрый выбор:",
+                    stringResource(R.string.label_snooze_presets),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -245,7 +247,7 @@ private fun SnoozeEditorDialog(
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    "Диапазон: 1 — 720 минут",
+                    stringResource(R.string.label_snooze_range),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -255,10 +257,10 @@ private fun SnoozeEditorDialog(
             TextButton(
                 onClick = onSave,
                 enabled = value.isNotBlank() && value.toIntOrNull() != null
-            ) { Text("Сохранить") }
+            ) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -292,28 +294,28 @@ private fun ThemeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Тема оформления") },
+        title = { Text(stringResource(R.string.dialog_theme_title)) },
         text = {
             Column {
                 ThemeOption(
                     theme = AppTheme.PALETTE,
-                    title = "Палитра",
-                    subtitle = "16 пастельных цветов для напоминаний",
+                    title = stringResource(R.string.theme_palette),
+                    subtitle = stringResource(R.string.dialog_theme_palette_desc),
                     selected = current == AppTheme.PALETTE,
                     onClick = { onPick(AppTheme.PALETTE) }
                 )
                 Spacer(Modifier.height(8.dp))
                 ThemeOption(
                     theme = AppTheme.MONOCHROME,
-                    title = "Монохром",
-                    subtitle = "Только оттенки серого, без цветных акцентов",
+                    title = stringResource(R.string.theme_monochrome),
+                    subtitle = stringResource(R.string.dialog_theme_monochrome_desc),
                     selected = current == AppTheme.MONOCHROME,
                     onClick = { onPick(AppTheme.MONOCHROME) }
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -352,15 +354,20 @@ private fun ThemeOption(
     }
 }
 
+@Composable
 private fun formatMinutes(minutes: Int): String = when {
-    minutes < 60 -> "$minutes мин"
-    minutes == 60 -> "1 час"
-    minutes % 60 == 0 -> "${minutes / 60} ч"
-    else -> "${minutes / 60} ч ${minutes % 60} мин"
+    minutes < 60 -> stringResource(R.string.pattern_minutes_value, minutes)
+    minutes == 60 -> stringResource(R.string.pattern_minutes_one_hour)
+    minutes % 60 == 0 -> stringResource(R.string.pattern_hours_value, minutes / 60)
+    else -> stringResource(
+        R.string.pattern_hours_minutes_value,
+        minutes / 60,
+        minutes % 60
+    )
 }
 
 private fun formatPreset(minutes: Int): String = when {
-    minutes < 60 -> "$minutes"
+    minutes < 60 -> minutes.toString()
     minutes == 60 -> "1ч"
     minutes == 120 -> "2ч"
     minutes == 240 -> "4ч"
@@ -368,7 +375,8 @@ private fun formatPreset(minutes: Int): String = when {
     else -> "${minutes / 60}ч"
 }
 
+@Composable
 private fun themeLabel(theme: AppTheme): String = when (theme) {
-    AppTheme.PALETTE -> "Палитра"
-    AppTheme.MONOCHROME -> "Монохром"
+    AppTheme.PALETTE -> stringResource(R.string.theme_palette)
+    AppTheme.MONOCHROME -> stringResource(R.string.theme_monochrome)
 }

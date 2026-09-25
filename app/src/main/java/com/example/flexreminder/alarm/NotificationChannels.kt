@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioAttributes
 import android.net.Uri
+import com.example.flexreminder.R
 import java.security.MessageDigest
 
 object NotificationChannels {
@@ -14,9 +15,6 @@ object NotificationChannels {
 
     private const val PREFIX_CUSTOM = "reminders_custom_"
     private const val PREFIX_DEFAULT = "reminders_default_"
-
-    private const val CHANNEL_NAME_CUSTOM = "Напоминания (свой звук)"
-    private const val CHANNEL_DESCRIPTION_CUSTOM = "Напоминания с пользовательским звуком"
 
     fun computeCustomChannelId(uri: String): String =
         PREFIX_CUSTOM + shortHash(uri)
@@ -42,16 +40,6 @@ object NotificationChannels {
         return id
     }
 
-    /**
-     * Определяет, какой канал соответствует указанному URI.
-     * Используется для открытия системных настроек канала из UI.
-     *
-     * Порядок:
-     *  1. URI null/пусто → CHANNEL_LOUD (базовый).
-     *  2. Существует кастомный канал для URI → он.
-     *  3. Существует канал глобального звука для URI → он.
-     *  4. Ничего не найдено → CHANNEL_LOUD.
-     */
     fun findChannelIdForUri(context: Context, uri: String?): String {
         if (uri.isNullOrBlank()) return CHANNEL_LOUD
 
@@ -80,10 +68,10 @@ object NotificationChannels {
 
         val channel = NotificationChannel(
             id,
-            CHANNEL_NAME_CUSTOM,
+            context.getString(R.string.notification_channel_custom_name),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = CHANNEL_DESCRIPTION_CUSTOM
+            description = context.getString(R.string.notification_channel_custom_desc)
             setSound(uri, attrs)
         }
         mgr.createNotificationChannel(channel)

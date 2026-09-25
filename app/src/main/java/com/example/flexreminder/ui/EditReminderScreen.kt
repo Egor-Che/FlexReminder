@@ -47,10 +47,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.flexreminder.R
 import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.alarm.SoundResolver
 import com.example.flexreminder.data.AppDatabase
@@ -112,7 +114,6 @@ fun EditReminderScreen(
     var showTimePicker by remember { mutableStateOf(false) }
     var showSoundDialog by remember { mutableStateOf(false) }
 
-    // Загрузка существующего напоминания или шаблона
     LaunchedEffect(reminderId, templateId) {
         if (!loaded) {
             val sourceId = when {
@@ -125,7 +126,6 @@ fun EditReminderScreen(
             }
             if (r != null) {
                 if (isFromTemplate) {
-                    // Заполняем по шаблону с пересчётом дат
                     title = r.title
                     notes = r.notes
                     mode = r.mode
@@ -133,10 +133,8 @@ fun EditReminderScreen(
                     minute = r.minute
                     silent = r.silent
                     colorIndex = r.colorIndex
-                    // Звук не копируем
                     soundUri = null
 
-                    // Расчёт новых дат
                     val today = todayMidnight()
                     val oldDuration = (r.endDate ?: r.startDate) - r.startDate
                     startDate = today
@@ -145,7 +143,6 @@ fun EditReminderScreen(
                     daysOnText = r.daysOn.toString()
                     daysOffText = r.daysOff.toString()
 
-                    // Сдвиг customDates
                     if (r.customDates.isNotEmpty()) {
                         val shift = today - DateUtils.midnight(r.startDate)
                         customDates = r.customDates.map { it + shift }.toSet()
@@ -178,7 +175,6 @@ fun EditReminderScreen(
         }
     }
 
-    // Обновляем имя звука
     LaunchedEffect(soundUri, defaultSoundUri) {
         val effectiveUri = soundUri ?: defaultSoundUri
         soundName = if (effectiveUri.isNullOrBlank()) null
@@ -187,7 +183,11 @@ fun EditReminderScreen(
         }
     }
 
-    val df = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
+    val dateShortPattern = stringResource(R.string.format_date_short)
+    val df = remember(dateShortPattern) {
+        SimpleDateFormat(dateShortPattern, Locale.getDefault())
+    }
+
     val daysOn = daysOnText.toIntOrNull()?.coerceAtLeast(1) ?: 1
     val daysOff = daysOffText.toIntOrNull()?.coerceAtLeast(0) ?: 0
 
@@ -205,9 +205,12 @@ fun EditReminderScreen(
                 title = {
                     Text(
                         when {
-                            isFromTemplate -> "Новое по примеру"
-                            isNew -> "Новое напоминание"
-                            else -> "Редактирование"
+                            isFromTemplate ->
+                                stringResource(R.string.screen_edit_title_from_template)
+                            isNew ->
+                                stringResource(R.string.screen_edit_title_new)
+                            else ->
+                                stringResource(R.string.screen_edit_title_edit)
                         }
                     )
                 },
@@ -215,7 +218,7 @@ fun EditReminderScreen(
                     IconButton(onClick = onDone) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 },
@@ -224,7 +227,10 @@ fun EditReminderScreen(
                         IconButton(onClick = {
                             vm.deleteById(reminderId) { onDone() }
                         }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Удалить")
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.common_delete)
+                            )
                         }
                     }
                 }
@@ -242,7 +248,7 @@ fun EditReminderScreen(
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text("Название") },
+                label = { Text(stringResource(R.string.label_field_title)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -252,13 +258,16 @@ fun EditReminderScreen(
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
-                label = { Text("Заметка (необязательно)") },
+                label = { Text(stringResource(R.string.label_field_notes)) },
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(16.dp))
 
-            Text("Тип расписания", style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.label_schedule_type),
+                style = MaterialTheme.typography.titleMedium
+            )
 
             Spacer(Modifier.height(8.dp))
 
@@ -297,7 +306,7 @@ fun EditReminderScreen(
                     },
                     text = {
                         Text(
-                            "Интервалы",
+                            stringResource(R.string.tab_intervals),
                             color = if (mode == ScheduleMode.INTERVAL) accentColor
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -319,7 +328,7 @@ fun EditReminderScreen(
                     },
                     text = {
                         Text(
-                            "Конкретные даты",
+                            stringResource(R.string.tab_custom_dates),
                             color = if (mode == ScheduleMode.CUSTOM_DATES) accentColor
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -376,7 +385,10 @@ fun EditReminderScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    String.format(Locale.getDefault(), "Время: %02d:%02d", hour, minute),
+                    text = stringResource(
+                        R.string.pattern_time_value,
+                        String.format(Locale.getDefault(), "%02d:%02d", hour, minute)
+                    ),
                     color = accentColor
                 )
             }
@@ -393,7 +405,7 @@ fun EditReminderScreen(
                     )
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Включено")
+                Text(stringResource(R.string.label_enabled))
             }
 
             Spacer(Modifier.height(8.dp))
@@ -424,9 +436,9 @@ fun EditReminderScreen(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = when {
-                        !enabled -> "Звук"
-                        silent -> "Без звука"
-                        else -> "Со звуком"
+                        !enabled -> stringResource(R.string.label_sound)
+                        silent -> stringResource(R.string.label_sound_off)
+                        else -> stringResource(R.string.label_sound_on)
                     }
                 )
             }
@@ -444,15 +456,18 @@ fun EditReminderScreen(
                             .padding(vertical = 4.dp)
                     ) {
                         Text(
-                            text = "Звук:",
+                            text = stringResource(R.string.label_sound_section),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = when {
-                                soundUri != null -> soundName ?: "Не найден"
-                                defaultSoundUri != null -> soundName ?: "Системный (из настроек)"
-                                else -> "Мелодия приложения"
+                                soundUri != null ->
+                                    soundName ?: stringResource(R.string.sound_not_found)
+                                defaultSoundUri != null ->
+                                    soundName ?: stringResource(R.string.sound_from_settings)
+                                else ->
+                                    stringResource(R.string.sound_builtin)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 2
@@ -464,7 +479,7 @@ fun EditReminderScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.VolumeUp,
-                            contentDescription = "Выбрать звук",
+                            contentDescription = stringResource(R.string.sound_choose),
                             tint = accentColor
                         )
                     }
@@ -475,7 +490,7 @@ fun EditReminderScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Restore,
-                            contentDescription = "Сбросить на звук по умолчанию",
+                            contentDescription = stringResource(R.string.sound_reset_to_default),
                             tint = if (soundUri != null)
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             else
@@ -488,15 +503,18 @@ fun EditReminderScreen(
             if (appTheme == AppTheme.PALETTE) {
                 Spacer(Modifier.height(20.dp))
 
-                Text("Цвет напоминания", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.label_color_section),
+                    style = MaterialTheme.typography.titleMedium
+                )
                 Spacer(Modifier.height(4.dp))
 
                 val selectedColorName = ReminderPalette.get(colorIndex)?.name
                 Text(
                     text = if (selectedColorName == null) {
-                        "Не выбран"
+                        stringResource(R.string.label_color_not_selected)
                     } else {
-                        "Выбран: $selectedColorName"
+                        stringResource(R.string.pattern_color_selected, selectedColorName)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -546,7 +564,7 @@ fun EditReminderScreen(
                     contentColor = onAccent
                 )
             ) {
-                Text("Сохранить")
+                Text(stringResource(R.string.common_save))
             }
 
             Spacer(Modifier.height(24.dp))
@@ -617,7 +635,13 @@ private fun IntervalForm(
             onClick = onShowStartPicker,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Начало: ${df.format(Date(startDate))}", color = accentColor)
+            Text(
+                text = stringResource(
+                    R.string.pattern_date_start,
+                    df.format(Date(startDate))
+                ),
+                color = accentColor
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -627,15 +651,24 @@ private fun IntervalForm(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = if (endDate == null) "Окончание: бессрочно"
-                else "Окончание: ${df.format(Date(endDate))}",
+                text = if (endDate == null) {
+                    stringResource(R.string.label_date_end_forever)
+                } else {
+                    stringResource(
+                        R.string.pattern_date_end,
+                        df.format(Date(endDate))
+                    )
+                },
                 color = accentColor
             )
         }
 
         if (endDate != null) {
             TextButton(onClick = onClearEnd) {
-                Text("Убрать дату окончания (бессрочно)", color = accentColor)
+                Text(
+                    stringResource(R.string.action_clear_end_date),
+                    color = accentColor
+                )
             }
         }
 
@@ -645,7 +678,7 @@ private fun IntervalForm(
             OutlinedTextField(
                 value = daysOnText,
                 onValueChange = onDaysOnChange,
-                label = { Text("Дней подряд") },
+                label = { Text(stringResource(R.string.label_field_days_on)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.weight(1f)
@@ -654,7 +687,7 @@ private fun IntervalForm(
             OutlinedTextField(
                 value = daysOffText,
                 onValueChange = onDaysOffChange,
-                label = { Text("Дней перерыв") },
+                label = { Text(stringResource(R.string.label_field_days_off)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.weight(1f)
@@ -664,7 +697,11 @@ private fun IntervalForm(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Итого: ${formatPattern(daysOn, daysOff)} (цикл ${daysOn + daysOff} дн.)",
+            text = stringResource(
+                R.string.pattern_schedule_summary,
+                formatPattern(daysOn, daysOff),
+                daysOn + daysOff
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = accentColor
         )
@@ -682,7 +719,7 @@ private fun CustomDatesForm(
 ) {
     Column {
         Text(
-            text = "Выбрано: ${selectedDates.size} шт.",
+            text = stringResource(R.string.label_selected_count, selectedDates.size),
             style = MaterialTheme.typography.bodyMedium,
             color = accentColor
         )
@@ -690,8 +727,7 @@ private fun CustomDatesForm(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Нажмите на дату, чтобы добавить или убрать её. " +
-                    "Можно переключаться между месяцами — уже выбранные даты сохраняются.",
+            text = stringResource(R.string.hint_custom_dates),
             style = MaterialTheme.typography.bodySmall
         )
 
@@ -719,7 +755,10 @@ private fun CustomDatesForm(
         if (selectedDates.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onClearAll) {
-                Text("Очистить все даты", color = accentColor)
+                Text(
+                    stringResource(R.string.action_clear_all_dates),
+                    color = accentColor
+                )
             }
         }
     }

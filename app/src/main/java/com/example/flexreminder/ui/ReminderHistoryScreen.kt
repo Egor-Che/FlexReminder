@@ -1,6 +1,5 @@
 package com.example.flexreminder.ui
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,19 +37,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.flexreminder.data.AppDatabase
+import com.example.flexreminder.R
 import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Iteration
-import com.example.flexreminder.data.Reminder
 import com.example.flexreminder.data.ScheduleMode
 import com.example.flexreminder.ui.theme.AppThemeColors
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -69,23 +65,25 @@ fun ReminderHistoryScreen(
     val iterations by vm.iterations.collectAsStateWithLifecycle()
     val activeDates by vm.activeDates.collectAsStateWithLifecycle()
 
-    val context = LocalContext.current
     val vm2: ReminderViewModel = viewModel()
 
     var selectedIterationDate by remember { mutableStateOf<Long?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    val dfShort = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
+    val datePattern = stringResource(R.string.format_date_short)
+    val dfShort = remember(datePattern) {
+        SimpleDateFormat(datePattern, Locale.getDefault())
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("История напоминания") },
+                title = { Text(stringResource(R.string.screen_history_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 },
@@ -94,7 +92,7 @@ fun ReminderHistoryScreen(
                         IconButton(onClick = { showDeleteDialog = true }) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "Удалить"
+                                contentDescription = stringResource(R.string.common_delete)
                             )
                         }
                     }
@@ -105,7 +103,7 @@ fun ReminderHistoryScreen(
         val r = reminder
         if (r == null) {
             Text(
-                "Загрузка…",
+                stringResource(R.string.common_loading),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -128,14 +126,12 @@ fun ReminderHistoryScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Название
             Text(
                 text = r.title,
                 style = MaterialTheme.typography.headlineSmall,
                 color = contentColor
             )
 
-            // Заметка
             if (r.notes.isNotBlank()) {
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -147,18 +143,20 @@ fun ReminderHistoryScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Расписание
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = cardBg)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    val scheduleText = when (r.mode) {
+                        ScheduleMode.INTERVAL -> formatPattern(r.daysOn, r.daysOff)
+                        ScheduleMode.CUSTOM_DATES -> stringResource(
+                            R.string.pattern_custom_dates_count,
+                            r.customDates.size
+                        )
+                    }
                     Text(
-                        text = when (r.mode) {
-                            ScheduleMode.INTERVAL -> formatPattern(r.daysOn, r.daysOff)
-                            ScheduleMode.CUSTOM_DATES ->
-                                "Конкретные даты: ${r.customDates.size} шт."
-                        },
+                        text = scheduleText,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = contentColor
@@ -166,13 +164,17 @@ fun ReminderHistoryScreen(
 
                     Spacer(Modifier.height(4.dp))
 
-                    val periodText = buildString {
-                        append("Период: с ")
-                        append(dfShort.format(Date(r.startDate)))
-                        r.endDate?.let {
-                            append(" по ")
-                            append(dfShort.format(Date(it)))
-                        }
+                    val periodText = if (r.endDate != null) {
+                        stringResource(
+                            R.string.pattern_history_period,
+                            dfShort.format(Date(r.startDate)),
+                            dfShort.format(Date(r.endDate))
+                        )
+                    } else {
+                        stringResource(
+                            R.string.pattern_period_from,
+                            dfShort.format(Date(r.startDate))
+                        )
                     }
                     Text(
                         text = periodText,
@@ -202,7 +204,10 @@ fun ReminderHistoryScreen(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (r.silent) "Без звука" else "Со звуком",
+                            text = stringResource(
+                                if (r.silent) R.string.label_sound_off
+                                else R.string.label_sound_on
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                             color = contentColor
                         )
@@ -212,7 +217,6 @@ fun ReminderHistoryScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Календарь с подсветкой активных дней
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = cardBg)
@@ -233,7 +237,6 @@ fun ReminderHistoryScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Кнопка «Создать по примеру»
             Button(
                 onClick = { onCreateFromExample(r.id) },
                 modifier = Modifier.fillMaxWidth(),
@@ -242,18 +245,17 @@ fun ReminderHistoryScreen(
                     contentColor = AppThemeColors.onAccentColor()
                 )
             ) {
-                Text("Создать по примеру")
+                Text(stringResource(R.string.action_create_from_example))
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // Кнопка «Удалить» — серая, без выделения
             OutlinedButton(
                 onClick = { showDeleteDialog = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Удалить",
+                    text = stringResource(R.string.common_delete),
                     color = secondaryColor
                 )
             }
@@ -262,7 +264,6 @@ fun ReminderHistoryScreen(
         }
     }
 
-    // Модалка итерации
     val selectedDate = selectedIterationDate
     if (selectedDate != null && reminder != null) {
         val iter: Iteration? = iterations.find { it.dateMillis == selectedDate }
@@ -275,13 +276,12 @@ fun ReminderHistoryScreen(
         )
     }
 
-    // Диалог удаления
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Удалить архивное напоминание?") },
+            title = { Text(stringResource(R.string.dialog_delete_archive_title)) },
             text = {
-                Text("Всё, включая историю срабатываний, будет удалено безвозвратно.")
+                Text(stringResource(R.string.dialog_delete_archive_message))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -289,11 +289,11 @@ fun ReminderHistoryScreen(
                     vm2.deleteById(reminderId) {
                         onBack()
                     }
-                }) { Text("Удалить") }
+                }) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )

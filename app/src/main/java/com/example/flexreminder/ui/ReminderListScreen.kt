@@ -50,9 +50,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.flexreminder.R
 import com.example.flexreminder.alarm.DateUtils
 import com.example.flexreminder.alarm.IterationLogic
 import com.example.flexreminder.data.AppTheme
@@ -99,18 +101,18 @@ fun ReminderListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Мои напоминания") },
+                title = { Text(stringResource(R.string.screen_list_title)) },
                 actions = {
                     IconButton(onClick = onArchive) {
                         Icon(
                             imageVector = Icons.Default.Inventory2,
-                            contentDescription = "Архив"
+                            contentDescription = stringResource(R.string.screen_list_archive)
                         )
                     }
                     IconButton(onClick = onSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Настройки"
+                            contentDescription = stringResource(R.string.screen_list_settings)
                         )
                     }
                 }
@@ -118,7 +120,10 @@ fun ReminderListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAdd) {
-                Icon(Icons.Default.Add, contentDescription = "Добавить")
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(R.string.screen_list_add)
+                )
             }
         }
     ) { padding ->
@@ -130,7 +135,7 @@ fun ReminderListScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Нет напоминаний.\nНажмите + чтобы создать.",
+                    stringResource(R.string.screen_list_empty),
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -212,19 +217,17 @@ private fun ReminderCard(
 
                     Spacer(Modifier.height(4.dp))
 
+                    val scheduleText = when (reminder.mode) {
+                        ScheduleMode.INTERVAL -> formatPattern(
+                            reminder.daysOn, reminder.daysOff
+                        )
+                        ScheduleMode.CUSTOM_DATES -> stringResource(
+                            R.string.pattern_custom_dates_count,
+                            reminder.customDates.size
+                        )
+                    }
                     Text(
-                        text = buildString {
-                            when (reminder.mode) {
-                                ScheduleMode.INTERVAL -> {
-                                    append(formatPattern(reminder.daysOn, reminder.daysOff))
-                                }
-                                ScheduleMode.CUSTOM_DATES -> {
-                                    append("Конкретные даты: ")
-                                    append(reminder.customDates.size)
-                                    append(" шт.")
-                                }
-                            }
-                        },
+                        text = scheduleText,
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryColor
                     )
@@ -250,9 +253,12 @@ private fun ReminderCard(
                             else
                                 Icons.Default.VolumeUp,
                             contentDescription = when {
-                                !reminder.enabled -> "Событие выключено"
-                                reminder.silent -> "Включить звук"
-                                else -> "Выключить звук"
+                                !reminder.enabled ->
+                                    stringResource(R.string.sound_event_disabled)
+                                reminder.silent ->
+                                    stringResource(R.string.sound_enable)
+                                else ->
+                                    stringResource(R.string.sound_disable)
                             },
                             tint = when {
                                 !reminder.enabled -> secondaryColor.copy(alpha = 0.4f)
@@ -269,7 +275,7 @@ private fun ReminderCard(
             if (reminder.enabled) {
                 IterationSummaryRow(
                     icon = Icons.Default.ArrowUpward,
-                    label = "Прошлая",
+                    label = stringResource(R.string.label_iteration_past),
                     iteration = triple.first,
                     hour = reminder.hour,
                     minute = reminder.minute,
@@ -280,7 +286,7 @@ private fun ReminderCard(
                 Spacer(Modifier.height(2.dp))
                 IterationSummaryRow(
                     icon = Icons.Default.PlayArrow,
-                    label = "Ближайшая",
+                    label = stringResource(R.string.label_iteration_nearest),
                     iteration = triple.second,
                     hour = reminder.hour,
                     minute = reminder.minute,
@@ -291,7 +297,7 @@ private fun ReminderCard(
                 Spacer(Modifier.height(2.dp))
                 IterationSummaryRow(
                     icon = Icons.Default.SkipNext,
-                    label = "Следующая",
+                    label = stringResource(R.string.label_iteration_next),
                     iteration = triple.third,
                     hour = reminder.hour,
                     minute = reminder.minute,
@@ -301,7 +307,7 @@ private fun ReminderCard(
                 )
             } else {
                 Text(
-                    "Выключено",
+                    stringResource(R.string.label_disabled),
                     style = MaterialTheme.typography.bodySmall,
                     color = secondaryColor
                 )
@@ -315,7 +321,7 @@ private fun ReminderCard(
                 enabled = reminder.enabled
             ) {
                 Text(
-                    "Отметить",
+                    stringResource(R.string.action_mark),
                     color = if (reminder.enabled) accentColor else secondaryColor
                 )
             }
@@ -357,13 +363,21 @@ private fun IterationSummaryRow(
 
         if (iteration == null) {
             Text(
-                "—",
+                stringResource(R.string.label_no_value),
                 style = MaterialTheme.typography.bodySmall,
                 color = secondaryColor
             )
         } else {
+            val datePattern = stringResource(R.string.format_date_short_weekday)
+            val dateFormat = remember(datePattern) {
+                SimpleDateFormat(datePattern, Locale.getDefault())
+            }
+            val dateText = remember(iteration.dateMillis, dateFormat) {
+                dateFormat.format(Date(iteration.dateMillis))
+            }
+
             Text(
-                text = "${shortDate(iteration.dateMillis)} " +
+                text = "$dateText " +
                         String.format(Locale.getDefault(), "%02d:%02d", hour, minute),
                 style = MaterialTheme.typography.bodySmall,
                 color = contentColor,
@@ -380,16 +394,13 @@ private fun IterationSummaryRow(
     }
 }
 
-private val shortDateFormat = SimpleDateFormat("dd.MM, EEE", Locale("ru"))
-
-private fun shortDate(millis: Long): String = shortDateFormat.format(Date(millis))
-
+@Composable
 fun formatPattern(daysOn: Int, daysOff: Int): String = when {
-    daysOff <= 0 -> "Каждый день"
-    daysOn == 1 && daysOff == 1 -> "Через день"
-    daysOn == 1 && daysOff == 6 -> "Раз в неделю"
-    daysOn == 1 && daysOff == 29 -> "Раз в 30 дней"
-    daysOn == 1 -> "Раз в ${daysOff + 1} дн."
-    daysOff == 1 -> "$daysOn дн. подряд, потом 1 дн. пауза"
-    else -> "$daysOn дн. подряд, потом $daysOff дн. пауза"
+    daysOff <= 0 -> stringResource(R.string.pattern_every_day)
+    daysOn == 1 && daysOff == 1 -> stringResource(R.string.pattern_every_other_day)
+    daysOn == 1 && daysOff == 6 -> stringResource(R.string.pattern_once_a_week)
+    daysOn == 1 && daysOff == 29 -> stringResource(R.string.pattern_once_in_30_days)
+    daysOn == 1 -> stringResource(R.string.pattern_once_in_n_days, daysOff + 1)
+    daysOff == 1 -> stringResource(R.string.pattern_days_on_off_one, daysOn)
+    else -> stringResource(R.string.pattern_days_on_off, daysOn, daysOff)
 }

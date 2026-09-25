@@ -15,19 +15,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.flexreminder.R
 import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Iteration
 import com.example.flexreminder.data.IterationStatus
 import com.example.flexreminder.data.StatusSource
 import com.example.flexreminder.ui.theme.AppThemeColors
 
-/**
- * Компактный статус итерации: тонированная иконка + текст в одном цвете.
- * Используется вместо эмодзи в текстовых строках.
- */
 @Composable
 fun IterationStatusLabel(
     iteration: Iteration,
@@ -39,24 +37,25 @@ fun IterationStatusLabel(
     val status = iteration.status
     val source = iteration.statusSource
 
-    val data = when {
-        status == IterationStatus.COMPLETED -> Triple(
-            "Выполнено",
-            AppThemeColors.completed(theme),
-            Icons.Default.Check
-        )
-        status == IterationStatus.SKIPPED && source == StatusSource.USER -> Triple(
-            "Пропущено",
-            AppThemeColors.skippedUser(theme),
-            Icons.Default.SkipNext
-        )
-        status == IterationStatus.SKIPPED && source == StatusSource.SYSTEM -> Triple(
-            "Пропущено",
-            AppThemeColors.skippedSystem(theme),
-            Icons.Default.Close
-        )
-        else -> return
-    }
+    val data: Triple<String, Color, androidx.compose.ui.graphics.vector.ImageVector> =
+        when {
+            status == IterationStatus.COMPLETED -> Triple(
+                stringResource(R.string.status_completed),
+                AppThemeColors.completed(theme),
+                Icons.Default.Check
+            )
+            status == IterationStatus.SKIPPED && source == StatusSource.USER -> Triple(
+                stringResource(R.string.status_skipped_user),
+                AppThemeColors.skippedUser(theme),
+                Icons.Default.SkipNext
+            )
+            status == IterationStatus.SKIPPED && source == StatusSource.SYSTEM -> Triple(
+                stringResource(R.string.status_skipped_system),
+                AppThemeColors.skippedSystem(theme),
+                Icons.Default.Close
+            )
+            else -> return
+        }
 
     val (text, color, icon) = data
 
@@ -80,7 +79,6 @@ fun IterationStatusLabel(
     }
 }
 
-/** Цвет статуса (для случаев, когда нужен только цвет, без иконки). */
 @Composable
 fun iterationStatusColor(
     iteration: Iteration,

@@ -1,4 +1,230 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Гибкие напоминания</string>
+
+    <!-- Общие -->
+    <string name="common_back">Назад</string>
+    <string name="common_close">Закрыть</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_delete">Удалить</string>
+    <string name="common_loading">Загрузка…</string>
+    <string name="common_save">Сохранить</string>
+    <string name="common_ok">Понятно</string>
+
+    <!-- Действия -->
+    <string name="action_mark_completed">Выполнено</string>
+    <string name="action_mark_skipped">Пропустить</string>
+    <string name="action_mark">Отметить</string>
+    <string name="action_create_from_example">Создать по примеру</string>
+    <string name="action_edit">Редактировать</string>
+
+    <!-- Эмодзи -->
+    <string name="emoji_sound_on">🔔</string>
+    <string name="emoji_sound_off">🔇</string>
+
+    <!-- Шаблоны с эмодзи -->
+    <string name="pattern_emoji_text">%1$s %2$s</string>
+
+    <!-- Статусы итераций -->
+    <string name="status_completed">Выполнено</string>
+    <string name="status_skipped_user">Пропущено (вами)</string>
+    <string name="status_skipped_system">Пропущено</string>
+
+    <!-- Форматы дат -->
+    <string name="format_month_year">LLLL yyyy</string>
+    <string name="format_iteration_date">dd.MM.yyyy, EEE</string>
+    <string name="format_date_short_weekday">dd.MM, EEE</string>
+    <string name="format_date_short">dd.MM.yyyy</string>
+    <string name="format_date_full_with_weekday">dd.MM.yyyy, EEEE</string>
+    <string name="format_date_time">HH:mm dd.MM.yyyy</string>
+    <string name="format_time">HH:mm</string>
+
+    <!-- Календарь -->
+    <string name="calendar_prev_month">Предыдущий месяц</string>
+    <string name="calendar_next_month">Следующий месяц</string>
+    <string-array name="calendar_weekdays">
+        <item>Пн</item>
+        <item>Вт</item>
+        <item>Ср</item>
+        <item>Чт</item>
+        <item>Пт</item>
+        <item>Сб</item>
+        <item>Вс</item>
+    </string-array>
+
+    <!-- Главный экран -->
+    <string name="screen_list_title">Мои напоминания</string>
+    <string name="screen_list_archive">Архив</string>
+    <string name="screen_list_settings">Настройки</string>
+    <string name="screen_list_add">Добавить</string>
+    <string name="screen_list_empty">Нет напоминаний.\nНажмите + чтобы создать.</string>
+
+    <!-- Архив -->
+    <string name="screen_archive_title">Архив напоминаний</string>
+    <string name="screen_archive_empty">Архив пуст\n\nЗдесь будут напоминания, которые закончились — после наступления даты окончания.</string>
+
+    <!-- История напоминания -->
+    <string name="screen_history_title">История напоминания</string>
+    <string name="pattern_history_period">Период: с %1$s по %2$s</string>
+    <string name="dialog_delete_archive_title">Удалить архивное напоминание?</string>
+    <string name="dialog_delete_archive_message">Всё, включая историю срабатываний, будет удалено безвозвратно.</string>
+
+    <!-- Просмотр напоминания -->
+    <string name="screen_view_title">Просмотр</string>
+    <string name="pattern_time_label">Время: %1$s</string>
+    <string name="pattern_period_label_from_to">Период: с %1$s по %2$s</string>
+    <string name="pattern_period_label_from">Период: с %1$s (бессрочно)</string>
+    <string name="pattern_first_last_dates">Первая: %1$s, последняя: %2$s</string>
+    <string name="pattern_next_trigger">Следующее: %1$s</string>
+    <string name="view_period_finished">Период завершён — отредактируйте расписание</string>
+    <string name="view_schedule_month">Расписание на месяц</string>
+    <string name="view_selected_dates">Выбранные даты</string>
+
+    <!-- Редактор напоминания -->
+    <string name="screen_edit_title_new">Новое напоминание</string>
+    <string name="screen_edit_title_edit">Редактирование</string>
+    <string name="screen_edit_title_from_template">Новое по примеру</string>
+    <string name="label_field_title">Название</string>
+    <string name="label_field_notes">Заметка (необязательно)</string>
+    <string name="label_schedule_type">Тип расписания</string>
+    <string name="tab_intervals">Интервалы</string>
+    <string name="tab_custom_dates">Конкретные даты</string>
+    <string name="pattern_date_start">Начало: %1$s</string>
+    <string name="pattern_date_end">Окончание: %1$s</string>
+    <string name="label_date_end_forever">Окончание: бессрочно</string>
+    <string name="action_clear_end_date">Убрать дату окончания (бессрочно)</string>
+    <string name="label_field_days_on">Дней подряд</string>
+    <string name="label_field_days_off">Дней перерыв</string>
+    <string name="pattern_schedule_summary">Итого: %1$s (цикл %2$d дн.)</string>
+    <string name="pattern_time_value">Время: %1$s</string>
+    <string name="label_sound_section">Звук:</string>
+    <string name="sound_builtin">Мелодия приложения</string>
+    <string name="sound_from_settings">Системный (из настроек)</string>
+    <string name="sound_not_found">Не найден</string>
+    <string name="sound_choose">Выбрать звук</string>
+    <string name="sound_reset_to_default">Сбросить на звук по умолчанию</string>
+    <string name="label_color_section">Цвет напоминания</string>
+    <string name="label_color_not_selected">Не выбран</string>
+    <string name="pattern_color_selected">Выбран: %1$s</string>
+    <string name="label_selected_count">Выбрано: %1$d шт.</string>
+    <string name="hint_custom_dates">Нажмите на дату, чтобы добавить или убрать её. Можно переключаться между месяцами — уже выбранные даты сохраняются.</string>
+    <string name="action_clear_all_dates">Очистить все даты</string>
+
+    <!-- Настройки -->
+    <string name="screen_settings_title">Настройки</string>
+    <string name="section_snooze">Отсрочка уведомления</string>
+    <string name="section_notifications">Уведомления</string>
+    <string name="section_appearance">Внешний вид</string>
+    <string name="label_snooze_short">Короткий интервал</string>
+    <string name="label_snooze_long">Длинный интервал</string>
+    <string name="label_default_sound">Звук по умолчанию</string>
+    <string name="label_theme">Тема</string>
+    <string name="theme_palette">Палитра</string>
+    <string name="theme_monochrome">Монохром</string>
+    <string name="dialog_theme_title">Тема оформления</string>
+    <string name="dialog_theme_palette_desc">16 пастельных цветов для напоминаний</string>
+    <string name="dialog_theme_monochrome_desc">Только оттенки серого, без цветных акцентов</string>
+    <string name="dialog_snooze_short_title">Короткий интервал</string>
+    <string name="dialog_snooze_long_title">Длинный интервал</string>
+    <string name="label_snooze_minutes_field">Минут</string>
+    <string name="label_snooze_presets">Быстрый выбор:</string>
+    <string name="label_snooze_range">Диапазон: 1 — 720 минут</string>
+    <string name="pattern_minutes_value">%1$d мин</string>
+    <string name="pattern_hours_value">%1$d ч</string>
+    <string name="pattern_hours_minutes_value">%1$d ч %2$d мин</string>
+    <string name="pattern_minutes_one_hour">1 час</string>
+
+    <!-- Диалог выбора звука -->
+    <string name="screen_sound_picker_title">Выбрать звук</string>
+    <string name="label_sound_selected">Выбрано:</string>
+    <string name="label_sound_default">По умолчанию</string>
+    <string name="sound_action_play">Прослушать</string>
+    <string name="sound_action_stop">Остановить</string>
+    <string name="sound_picker_empty">Звуки не найдены</string>
+    <string name="sound_picker_my_file">Свой файл</string>
+    <string name="sound_picker_reset">Сбросить</string>
+    <string name="sound_category_ringtones">Звонки</string>
+    <string name="sound_category_notifications">Уведомления</string>
+    <string name="sound_category_alarms">Будильники</string>
+
+    <!-- Экран отметок -->
+    <string name="screen_mark_title">Отметки</string>
+    <string name="screen_mark_title_with_name">Отметки: %1$s</string>
+    <string name="mark_bulk_complete_line1">Выполнить всё</string>
+    <string name="mark_bulk_complete_line2">прошедшее</string>
+    <string name="mark_bulk_skip_line1">Пропустить всё</string>
+    <string name="mark_bulk_skip_line2">будущее</string>
+    <string name="mark_show_only_marked">Показать только с отметками</string>
+    <string name="mark_empty_all">Нет итераций в этом диапазоне</string>
+    <string name="mark_empty_marked">Нет отмеченных итераций</string>
+    <string name="mark_rollback_button">Отменить все изменения сессии</string>
+    <string name="mark_system_hint">Чтобы изменить, нажмите на галочку</string>
+    <string name="mark_dialog_complete_title">Отметить прошедшее выполненным?</string>
+    <string name="mark_dialog_skip_title">Отметить будущее пропущенным?</string>
+    <string name="mark_dialog_count_range">Будет отмечено: %1$d итераций\nДиапазон: %2$s — %3$s</string>
+    <string name="mark_dialog_complete_confirm">Отметить</string>
+    <string name="mark_dialog_skip_confirm">Пропустить</string>
+    <string name="mark_dialog_rollback_title">Отменить все изменения сессии?</string>
+    <string name="mark_dialog_rollback_message">Все статусы, изменённые за эту сессию, будут возвращены к исходному состоянию.</string>
+    <string name="mark_dialog_rollback_confirm">Отменить изменения</string>
+
+    <!-- Уведомления -->
+    <string name="notification_channel_loud_name">Напоминания (со звуком)</string>
+    <string name="notification_channel_loud_desc">Напоминания со звуком и вибрацией</string>
+    <string name="notification_channel_silent_name">Напоминания (беззвучные)</string>
+    <string name="notification_channel_silent_desc">Тихие напоминания — только в шторке</string>
+    <string name="notification_channel_custom_name">Напоминания (свой звук)</string>
+    <string name="notification_channel_custom_desc">Напоминания с пользовательским звуком</string>
+    <string name="notification_default_title">Напоминание</string>
+    <string name="notification_action_complete">Выполнено</string>
+    <string name="notification_action_skip">Пропустить</string>
+    <string name="notification_snooze_minutes">Отложить %1$d мин</string>
+    <string name="notification_snooze_one_hour">Отложить 1 час</string>
+    <string name="notification_snooze_hours">Отложить %1$d ч</string>
+    <string name="notification_snooze_hours_minutes">Отложить %1$d ч %2$d мин</string>
+
+    <!-- Модалка итерации -->
+    <string name="dialog_iteration_scheduled">Назначено:</string>
+    <string name="dialog_iteration_fired">Сработало:</string>
+    <string name="dialog_iteration_snoozes">Переносы:</string>
+    <string name="dialog_iteration_status">Статус:</string>
+    <string name="dialog_iteration_time">Время:</string>
+    <string name="dialog_iteration_no_actions">Действий не зафиксировано.\nВозможно, устройство было отключено.</string>
+    <string name="pattern_snooze_entry">  • %1$s → на %2$s</string>
+
+    <!-- Единицы измерения (сокращения) -->
+    <string name="unit_days_short">дн.</string>
+    <string name="unit_minutes_short">мин</string>
+    <string name="unit_hours_short">ч</string>
+    <string name="unit_items_short">шт.</string>
+
+    <!-- Периоды -->
+    <string name="pattern_period_from_to">С %1$s по %2$s</string>
+    <string name="pattern_period_from">С %1$s</string>
+
+    <!-- Паттерны расписания -->
+    <string name="pattern_every_day">Каждый день</string>
+    <string name="pattern_every_other_day">Через день</string>
+    <string name="pattern_once_a_week">Раз в неделю</string>
+    <string name="pattern_once_in_30_days">Раз в 30 дней</string>
+    <string name="pattern_once_in_n_days">Раз в %1$d дн.</string>
+    <string name="pattern_days_on_off_one">%1$d дн. подряд, потом 1 дн. пауза</string>
+    <string name="pattern_days_on_off">%1$d дн. подряд, потом %2$d дн. пауза</string>
+    <string name="pattern_custom_dates_count">Конкретные даты: %1$d шт.</string>
+
+    <!-- Метки итераций в карточке -->
+    <string name="label_iteration_past">Прошлая</string>
+    <string name="label_iteration_nearest">Ближайшая</string>
+    <string name="label_iteration_next">Следующая</string>
+    <string name="label_no_value">—</string>
+
+    <!-- Свитчи и звук -->
+    <string name="label_enabled">Включено</string>
+    <string name="label_disabled">Выключено</string>
+    <string name="label_sound">Звук</string>
+    <string name="label_sound_on">Со звуком</string>
+    <string name="label_sound_off">Без звука</string>
+    <string name="sound_enable">Включить звук</string>
+    <string name="sound_disable">Выключить звук</string>
+    <string name="sound_event_disabled">Событие выключено</string>
 </resources>

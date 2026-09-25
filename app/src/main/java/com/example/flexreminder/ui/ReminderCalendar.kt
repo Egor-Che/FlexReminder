@@ -28,9 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.flexreminder.R
 import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.ui.theme.AppThemeColors
 import java.text.SimpleDateFormat
@@ -61,8 +64,11 @@ fun ReminderCalendar(
         )
     }
 
-    val monthFormat = remember { SimpleDateFormat("LLLL yyyy", Locale.getDefault()) }
-    val monthTitle = remember(displayYear, displayMonth) {
+    val monthPattern = stringResource(R.string.format_month_year)
+    val monthFormat = remember(monthPattern) {
+        SimpleDateFormat(monthPattern, Locale.getDefault())
+    }
+    val monthTitle = remember(displayYear, displayMonth, monthFormat) {
         val raw = Calendar.getInstance().apply {
             set(Calendar.YEAR, displayYear)
             set(Calendar.MONTH, displayMonth)
@@ -71,7 +77,7 @@ fun ReminderCalendar(
         raw.replaceFirstChar { it.uppercase() }
     }
 
-    val weekDays = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+    val weekDays = stringArrayResource(R.array.calendar_weekdays).toList()
 
     val highlightColor = AppThemeColors.calendarHighlight(theme, colorIndex)
     val onHighlightColor = Color.White
@@ -97,7 +103,7 @@ fun ReminderCalendar(
             }) {
                 Icon(
                     Icons.Default.ChevronLeft,
-                    contentDescription = "Предыдущий месяц",
+                    contentDescription = stringResource(R.string.calendar_prev_month),
                     tint = textColor
                 )
             }
@@ -119,7 +125,7 @@ fun ReminderCalendar(
             }) {
                 Icon(
                     Icons.Default.ChevronRight,
-                    contentDescription = "Следующий месяц",
+                    contentDescription = stringResource(R.string.calendar_next_month),
                     tint = textColor
                 )
             }
@@ -208,7 +214,6 @@ private fun DayCell(
     }
     val isToday = dayMillis == today
 
-    // В режиме readOnly клик разрешён только если подсвечен (активный день)
     val clickable = !readOnly || isSelected
 
     Box(

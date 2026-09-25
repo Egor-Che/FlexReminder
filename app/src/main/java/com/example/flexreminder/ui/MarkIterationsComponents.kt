@@ -19,12 +19,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.flexreminder.R
 import com.example.flexreminder.data.AppTheme
 import com.example.flexreminder.data.Iteration
 import com.example.flexreminder.data.IterationStatus
@@ -33,10 +36,6 @@ import com.example.flexreminder.ui.theme.AppThemeColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-private val dateFormatRu = SimpleDateFormat("dd.MM.yyyy, EEE", Locale("ru"))
-
-fun formatIterationDate(millis: Long): String = dateFormatRu.format(Date(millis))
 
 @Composable
 fun IterationRow(
@@ -53,6 +52,14 @@ fun IterationRow(
     val status = iteration.status
     val source = iteration.statusSource
     val isSystemStatus = status == IterationStatus.SKIPPED && source == StatusSource.SYSTEM
+
+    val datePattern = stringResource(R.string.format_iteration_date)
+    val dateFormat = remember(datePattern) {
+        SimpleDateFormat(datePattern, Locale.getDefault())
+    }
+    val dateText = remember(iteration.dateMillis, dateFormat) {
+        dateFormat.format(Date(iteration.dateMillis))
+    }
 
     val rowBg = if (isNearest)
         AppThemeColors.accent(theme, colorIndex).copy(alpha = 0.15f)
@@ -75,7 +82,7 @@ fun IterationRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = formatIterationDate(iteration.dateMillis),
+                text = dateText,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isNearest) FontWeight.Bold else FontWeight.Normal
             )
@@ -99,7 +106,7 @@ fun IterationRow(
             isActive = status == IterationStatus.COMPLETED,
             activeColor = AppThemeColors.completed(theme),
             isCheck = true,
-            contentDescription = "Выполнено",
+            contentDescription = stringResource(R.string.action_mark_completed),
             onClick = onClickComplete
         )
         Spacer(Modifier.width(8.dp))
@@ -110,7 +117,7 @@ fun IterationRow(
             else
                 AppThemeColors.skippedUser(theme),
             isCheck = false,
-            contentDescription = "Пропустить",
+            contentDescription = stringResource(R.string.action_mark_skipped),
             onClick = {
                 if (isSystemStatus) onBlockedBySystem() else onClickSkip()
             }
