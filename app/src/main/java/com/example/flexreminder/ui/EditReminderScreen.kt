@@ -405,7 +405,12 @@ fun EditReminderScreen(
                     )
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.label_enabled))
+                Text(
+                    stringResource(
+                        if (enabled) R.string.label_enabled
+                        else R.string.label_disabled
+                    )
+                )
             }
 
             Spacer(Modifier.height(8.dp))

@@ -165,7 +165,7 @@ fun ViewReminderScreen(
                         Spacer(Modifier.width(16.dp))
                         SoundLabel(
                             silent = r.silent,
-                            enabled = true,
+                            enabled = r.enabled,
                             color = contentColor
                         )
                     }
@@ -255,7 +255,13 @@ fun ViewReminderScreen(
                             )
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.label_enabled), color = contentColor)
+                        Text(
+                            text = stringResource(
+                                if (r.enabled) R.string.label_enabled
+                                else R.string.label_disabled
+                            ),
+                            color = contentColor
+                        )
 
                         Spacer(Modifier.width(24.dp))
 

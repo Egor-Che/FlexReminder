@@ -61,20 +61,26 @@ fun IterationRow(
         dateFormat.format(Date(iteration.dateMillis))
     }
 
+    val rowShape = MaterialTheme.shapes.medium
+
     val rowBg = if (isNearest)
         AppThemeColors.accent(theme, colorIndex).copy(alpha = 0.15f)
     else
         MaterialTheme.colorScheme.surface
 
     val borderMod = if (isNearest) {
-        Modifier.border(1.dp, AppThemeColors.accent(theme, colorIndex), CircleShape)
+        Modifier.border(
+            width = 1.dp,
+            color = AppThemeColors.accent(theme, colorIndex),
+            shape = rowShape
+        )
     } else Modifier
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .clip(rowShape)
             .background(rowBg)
             .then(borderMod)
             .padding(horizontal = 12.dp, vertical = 10.dp),
