@@ -182,7 +182,7 @@ FlexReminder/
     ├── build.gradle.kts
     └── src/main/
         ├── AndroidManifest.xml
-        ├── java/com/example/flexreminder/
+        ├── java/io/github/egorche/flexreminder/
         │   ├── MainActivity.kt
         │   ├── alarm/
         │   │   ├── AlarmScheduler.kt
@@ -323,6 +323,14 @@ FlexReminder/
 - Репозиторий: https://github.com/Egor-Che/FlexReminder (Private)
 - Ветка: `main`
 - Пользователь: Egor-Che
+
+### RuStore
+
+- Контактный email для карточки: `flexreminder@mail.ru`
+- Политика конфиденциальности: https://Egor-Che.github.io/FlexReminder/privacy-policy.html
+- Название приложения и в магазине, и в лаунчере: **Напоминалка**
+- Категория: Продуктивность
+- Возрастной рейтинг: 0+
 
 ### GitHub Actions
 

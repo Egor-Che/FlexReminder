@@ -28,11 +28,11 @@ val hasLocalSigning = !localKeystorePath.isNullOrBlank() &&
 val hasReleaseSigning = hasCiSigning || hasLocalSigning
 
 android {
-    namespace = "com.example.flexreminder"
+    namespace = "io.github.egorche.flexreminder"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.flexreminder"
+        applicationId = "io.github.egorche.flexreminder"
         minSdk = 28
         targetSdk = 34
         versionCode = 1
@@ -91,11 +91,28 @@ android {
         }
         release {
             isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
             }
+        }
+    }
+
+    // Настройки App Bundle.
+    // Не разделяем по языкам — нам это не нужно для одного языка.
+    // Разделение по плотности и ABI оставляем включённым (RuStore сам соберёт
+    // оптимальные APK под каждое устройство).
+    bundle {
+        language {
+            enableSplit = false
+        }
+        density {
+            enableSplit = true
+        }
+        abi {
+            enableSplit = true
         }
     }
 }
