@@ -91,11 +91,28 @@ android {
         }
         release {
             isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
             }
+        }
+    }
+
+    // Настройки App Bundle.
+    // Не разделяем по языкам — нам это не нужно для одного языка.
+    // Разделение по плотности и ABI оставляем включённым (RuStore сам соберёт
+    // оптимальные APK под каждое устройство).
+    bundle {
+        language {
+            enableSplit = false
+        }
+        density {
+            enableSplit = true
+        }
+        abi {
+            enableSplit = true
         }
     }
 }
