@@ -324,6 +324,14 @@ FlexReminder/
 - Ветка: `main`
 - Пользователь: Egor-Che
 
+### RuStore
+
+- Контактный email для карточки: `flexreminder@mail.ru`
+- Политика конфиденциальности: https://Egor-Che.github.io/FlexReminder/privacy-policy.html
+- Название приложения и в магазине, и в лаунчере: **Напоминалка**
+- Категория: Продуктивность
+- Возрастной рейтинг: 0+
+
 ### GitHub Actions
 
 - Файл: `.github/workflows/build.yml`
