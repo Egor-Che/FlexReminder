@@ -182,7 +182,7 @@ FlexReminder/
     ├── build.gradle.kts
     └── src/main/
         ├── AndroidManifest.xml
-        ├── java/com/example/flexreminder/
+        ├── java/io/github/egorche/flexreminder/
         │   ├── MainActivity.kt
         │   ├── alarm/
         │   │   ├── AlarmScheduler.kt

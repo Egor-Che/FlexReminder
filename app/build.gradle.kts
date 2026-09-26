@@ -28,11 +28,11 @@ val hasLocalSigning = !localKeystorePath.isNullOrBlank() &&
 val hasReleaseSigning = hasCiSigning || hasLocalSigning
 
 android {
-    namespace = "com.example.flexreminder"
+    namespace = "io.github.egorche.flexreminder"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.flexreminder"
+        applicationId = "io.github.egorche.flexreminder"
         minSdk = 28
         targetSdk = 34
         versionCode = 1

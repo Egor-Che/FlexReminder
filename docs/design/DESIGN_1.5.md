@@ -289,7 +289,7 @@ Icon(
 В каждом файле, где используем `stringResource`, добавляем:
 ```kotlin
 import androidx.compose.ui.res.stringResource
-import com.example.flexreminder.R
+import io.github.egorche.flexreminder.R
 ```
 
 Для `R.string.*` — импорт R-класса.
