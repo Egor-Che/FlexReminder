@@ -1,27 +1,15 @@
-# ---------- Gradle ----------
-.gradle/
-build/
-
-# ---------- IDE / OS ----------
-.idea/
 *.iml
+.gradle/
+/local.properties
+/.idea/
 .DS_Store
-
-# ---------- Android / NDK ----------
+**/build/
 /captures
 .externalNativeBuild
 .cxx
-
-# ---------- Локальные конфиги ----------
 local.properties
 
-# ---------- Подпись / keystore ----------
-*.jks
-*.keystore
-*.keystore.base64
-
-# ---------- Секреты ----------
-key.properties
-secrets.properties
-*.env
-.env.*
+# Ключи и сертификаты — не коммитим
+release.keystore
+release.keystore.base64
+release_certificate.pem
