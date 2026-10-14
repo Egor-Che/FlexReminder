@@ -12,5 +12,7 @@ local.properties
 # Ключи и сертификаты — не коммитим
 release.keystore
 release.keystore.base64
-release_certificate.pemFlexReminder.zip
 release_certificate.pem
+
+# Временные архивы
+FlexReminder.zip
