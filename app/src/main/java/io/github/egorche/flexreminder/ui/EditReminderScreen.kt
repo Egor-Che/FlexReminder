@@ -105,6 +105,10 @@ fun EditReminderScreen(
 
     var lastGeneratedKey by remember { mutableStateOf<String?>(null) }
 
+    // Fix #25: флаг, что пользователь реально трогал интервалы.
+    // Если нет — при переключении на «Конкретные даты» календарь остаётся пустым.
+    var intervalsTouched by remember { mutableStateOf(false) }
+
     var hour by remember { mutableStateOf(9) }
     var minute by remember { mutableStateOf(0) }
     var enabled by remember { mutableStateOf(true) }
@@ -156,6 +160,11 @@ fun EditReminderScreen(
                         customDates = r.customDates.map { it + shift }.toSet()
                     }
 
+                    // Fix #25: шаблон в режиме INTERVAL считаем «тронутым»
+                    if (r.mode == ScheduleMode.INTERVAL) {
+                        intervalsTouched = true
+                    }
+
                     enabled = true
                 } else {
                     title = r.title
@@ -176,6 +185,9 @@ fun EditReminderScreen(
                         lastGeneratedKey = intervalKey(
                             r.daysOn, r.daysOff, r.startDate, r.endDate
                         )
+                        // Fix #25: редактируем существующее INTERVAL-напоминание —
+                        // интервалы уже заданы, автогенерация должна работать.
+                        intervalsTouched = true
                     }
                 }
             }
@@ -308,6 +320,9 @@ fun EditReminderScreen(
                                         1, 0, startDate, endDate
                                     )
                                 }
+                                // Fix #25: пользователь работал с интервалами
+                                // через календарь — считаем интервалы «тронутыми».
+                                intervalsTouched = true
                             }
                             mode = ScheduleMode.INTERVAL
                         }
@@ -324,12 +339,19 @@ fun EditReminderScreen(
                     selected = mode == ScheduleMode.CUSTOM_DATES,
                     onClick = {
                         if (mode != ScheduleMode.CUSTOM_DATES) {
-                            val key = intervalKey(daysOn, daysOff, startDate, endDate)
-                            if (customDates.isEmpty() || key != lastGeneratedKey) {
-                                customDates = generateDatesFromInterval(
-                                    startDate, endDate, daysOn, daysOff
+                            // Fix #25: автогенерация только если пользователь
+                            // реально трогал интервалы. Для нового напоминания
+                            // с дефолтами 1/0 календарь остаётся пустым.
+                            if (intervalsTouched) {
+                                val key = intervalKey(
+                                    daysOn, daysOff, startDate, endDate
                                 )
-                                lastGeneratedKey = key
+                                if (customDates.isEmpty() || key != lastGeneratedKey) {
+                                    customDates = generateDatesFromInterval(
+                                        startDate, endDate, daysOn, daysOff
+                                    )
+                                    lastGeneratedKey = key
+                                }
                             }
                             mode = ScheduleMode.CUSTOM_DATES
                         }
@@ -358,8 +380,16 @@ fun EditReminderScreen(
                         onShowStartPicker = { showStartPicker = true },
                         onShowEndPicker = { showEndPicker = true },
                         onClearEnd = { endDate = null },
-                        onDaysOnChange = { s -> daysOnText = s.filter { it.isDigit() }.take(3) },
-                        onDaysOffChange = { s -> daysOffText = s.filter { it.isDigit() }.take(3) },
+                        onDaysOnChange = { s ->
+                            daysOnText = s.filter { it.isDigit() }.take(3)
+                            // Fix #25: пользователь ввёл дни — интервалы «тронуты»
+                            intervalsTouched = true
+                        },
+                        onDaysOffChange = { s ->
+                            daysOffText = s.filter { it.isDigit() }.take(3)
+                            // Fix #25: пользователь ввёл дни — интервалы «тронуты»
+                            intervalsTouched = true
+                        },
                         daysOn = daysOn,
                         daysOff = daysOff
                     )

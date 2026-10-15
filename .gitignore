@@ -13,3 +13,6 @@ local.properties
 release.keystore
 release.keystore.base64
 release_certificate.pem
+
+# Временные архивы
+FlexReminder.zip
