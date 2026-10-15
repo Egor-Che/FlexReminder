@@ -2,7 +2,9 @@ name: Build APK & AAB
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop, bug-fixes ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
