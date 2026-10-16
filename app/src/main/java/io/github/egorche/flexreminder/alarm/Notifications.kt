@@ -23,9 +23,16 @@ object Notifications {
     /** Максимальное количество переносов на одну итерацию. */
     const val MAX_SNOOZE_COUNT = 5
 
+    /**
+     * Флаги кнопок уведомления (FEAT #27).
+     *
+     *  - showSnooze: показывать ли кнопку «Отложить».
+     *    Становится false, когда исчерпан лимит переносов (MAX_SNOOZE_COUNT).
+     *  - showSkip: показывать ли кнопку «Пропустить».
+     *    Всегда true — доступна в любой момент.
+     */
     data class ActionFlags(
-        val showSnoozeShort: Boolean,
-        val showSnoozeLong: Boolean,
+        val showSnooze: Boolean,
         val showSkip: Boolean
     )
 
@@ -33,22 +40,19 @@ object Notifications {
         reminder: io.github.egorche.flexreminder.data.Reminder,
         dateMillis: Long,
         snoozeCount: Int,
-        snoozeShortMinutes: Int,
-        snoozeLongMinutes: Int
+        snoozeMinutes: Int
     ): ActionFlags {
         val now = System.currentTimeMillis()
         val nextIterationTime = findNextIterationTime(reminder, dateMillis)
 
         val canSnooze = snoozeCount < MAX_SNOOZE_COUNT
-        val showSnoozeShort = canSnooze &&
+        val showSnooze = canSnooze &&
                 (nextIterationTime == null ||
-                        now + snoozeShortMinutes * 60_000L < nextIterationTime)
-        val showSnoozeLong = canSnooze &&
-                (nextIterationTime == null ||
-                        now + snoozeLongMinutes * 60_000L < nextIterationTime)
-        val showSkip = !canSnooze
+                        now + snoozeMinutes * 60_000L < nextIterationTime)
+        // FEAT #27: «Пропустить» показываем всегда, независимо от лимита.
+        val showSkip = true
 
-        return ActionFlags(showSnoozeShort, showSnoozeLong, showSkip)
+        return ActionFlags(showSnooze, showSkip)
     }
 
     private fun findNextIterationTime(
@@ -124,11 +128,9 @@ object Notifications {
         text: String,
         channelId: String,
         dateMillis: Long = -1L,
-        showSnoozeShort: Boolean = true,
-        showSnoozeLong: Boolean = true,
-        showSkip: Boolean = false,
-        snoozeShortMinutes: Int,
-        snoozeLongMinutes: Int
+        showSnooze: Boolean = true,
+        showSkip: Boolean = true,
+        snoozeMinutes: Int
     ) {
         ensureChannels(context)
 
@@ -151,11 +153,8 @@ object Notifications {
 
         val markCompleted = buildMarkCompletedPI(context, id, dateMillis, title, text)
         val markSkipped = buildMarkSkippedPI(context, id, dateMillis, title, text)
-        val snoozeShortPi = buildSnoozePI(
-            context, id, dateMillis, title, text, snoozeShortMinutes
-        )
-        val snoozeLongPi = buildSnoozePI(
-            context, id, dateMillis, title, text, snoozeLongMinutes
+        val snoozePi = buildSnoozePI(
+            context, id, dateMillis, title, text, snoozeMinutes
         )
 
         val builder = NotificationCompat.Builder(context, channelId)
@@ -173,20 +172,15 @@ object Notifications {
                 markCompleted
             )
 
-        if (showSnoozeShort) {
+        if (showSnooze) {
             builder.addAction(
                 android.R.drawable.ic_menu_recent_history,
-                formatSnoozeLabel(context, snoozeShortMinutes),
-                snoozeShortPi
+                formatSnoozeLabel(context, snoozeMinutes),
+                snoozePi
             )
         }
-        if (showSnoozeLong) {
-            builder.addAction(
-                android.R.drawable.ic_menu_recent_history,
-                formatSnoozeLabel(context, snoozeLongMinutes),
-                snoozeLongPi
-            )
-        }
+
+        // FEAT #27: «Пропустить» добавляется всегда (см. computeFlags).
         if (showSkip) {
             builder.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,

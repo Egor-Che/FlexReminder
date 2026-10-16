@@ -104,8 +104,8 @@ object SnoozeRestorer {
         iteration: Iteration
     ) {
         val settings = SettingsRepository.get(context)
-        val snoozeShort = settings.getSnoozeShort()
-        val snoozeLong = settings.getSnoozeLong()
+        // FEAT #27: единый интервал отложки.
+        val snoozeMinutes = settings.getSnoozeSmart()
 
         val channelId = resolveChannel(context, reminder)
 
@@ -113,8 +113,7 @@ object SnoozeRestorer {
             reminder = reminder,
             dateMillis = iteration.dateMillis,
             snoozeCount = iteration.snoozeCount,
-            snoozeShortMinutes = snoozeShort,
-            snoozeLongMinutes = snoozeLong
+            snoozeMinutes = snoozeMinutes
         )
 
         Notifications.show(
@@ -124,11 +123,9 @@ object SnoozeRestorer {
             text = reminder.notes,
             channelId = channelId,
             dateMillis = iteration.dateMillis,
-            showSnoozeShort = flags.showSnoozeShort,
-            showSnoozeLong = flags.showSnoozeLong,
+            showSnooze = flags.showSnooze,
             showSkip = flags.showSkip,
-            snoozeShortMinutes = snoozeShort,
-            snoozeLongMinutes = snoozeLong
+            snoozeMinutes = snoozeMinutes
         )
     }
 

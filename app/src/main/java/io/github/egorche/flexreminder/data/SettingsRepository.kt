@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.runBlocking
 
 private val Context.settingsDataStore by preferencesDataStore(name = "app_settings")
@@ -21,27 +22,55 @@ class SettingsRepository private constructor(context: Context) {
 
     private val dataStore = context.applicationContext.settingsDataStore
 
-    // ---------- Snooze интервалы ----------
+    // ---------- Snooze интервал (FEAT #27) ----------
+    //
+    // До FEAT #27 было две настройки: snooze_short_minutes и snooze_long_minutes.
+    // Теперь одна — snooze_smart_minutes.
+    //
+    // Миграция (первое чтение, если snooze_smart_minutes ещё не задан):
+    //   1. Если short != DEFAULT_SNOOZE_SHORT → берём short.
+    //   2. Иначе, если long != DEFAULT_SNOOZE_LONG → берём long.
+    //   3. Иначе → DEFAULT_SNOOZE_SMART.
+    //   Затем обрезаем в [SNOOZE_MIN, SNOOZE_MAX].
+    //
+    // Старые ключи НЕ удаляем — на случай откатов или будущих миграций.
 
-    val snoozeShortMinutes: Flow<Int> = dataStore.data.map {
-        it[KEY_SNOOZE_SHORT] ?: DEFAULT_SNOOZE_SHORT
-    }
+    val snoozeSmartMinutes: Flow<Int> = dataStore.data
+        .onStart { ensureSnoozeSmartMigrated() }
+        .map { prefs ->
+            prefs[KEY_SNOOZE_SMART] ?: DEFAULT_SNOOZE_SMART
+        }
 
-    val snoozeLongMinutes: Flow<Int> = dataStore.data.map {
-        it[KEY_SNOOZE_LONG] ?: DEFAULT_SNOOZE_LONG
-    }
-
-    suspend fun setSnoozeIntervals(short: Int, long: Int) {
+    suspend fun setSnoozeSmart(minutes: Int) {
+        val clamped = minutes.coerceIn(SNOOZE_MIN, SNOOZE_MAX)
         dataStore.edit { prefs ->
-            prefs[KEY_SNOOZE_SHORT] = short
-            prefs[KEY_SNOOZE_LONG] = long
+            prefs[KEY_SNOOZE_SMART] = clamped
         }
     }
 
-    suspend fun getSnoozeShort(): Int = snoozeShortMinutes.first()
-    suspend fun getSnoozeLong(): Int = snoozeLongMinutes.first()
-    fun getSnoozeShortBlocking(): Int = runBlocking { snoozeShortMinutes.first() }
-    fun getSnoozeLongBlocking(): Int = runBlocking { snoozeLongMinutes.first() }
+    suspend fun getSnoozeSmart(): Int = snoozeSmartMinutes.first()
+    fun getSnoozeSmartBlocking(): Int = runBlocking { snoozeSmartMinutes.first() }
+
+    /**
+     * Одноразовая миграция со старых ключей (short/long) на новый
+     * snooze_smart_minutes. Идемпотентна: если ключ уже установлен — сразу
+     * выходим, ничего не меняя.
+     */
+    private suspend fun ensureSnoozeSmartMigrated() {
+        val prefs = dataStore.data.first()
+        if (prefs[KEY_SNOOZE_SMART] != null) return
+
+        val short = prefs[KEY_SNOOZE_SHORT] ?: DEFAULT_SNOOZE_SHORT
+        val long = prefs[KEY_SNOOZE_LONG] ?: DEFAULT_SNOOZE_LONG
+
+        val candidate = when {
+            short != DEFAULT_SNOOZE_SHORT -> short
+            long != DEFAULT_SNOOZE_LONG -> long
+            else -> DEFAULT_SNOOZE_SMART
+        }.coerceIn(SNOOZE_MIN, SNOOZE_MAX)
+
+        dataStore.edit { it[KEY_SNOOZE_SMART] = candidate }
+    }
 
     // ---------- Тема ----------
 
@@ -80,13 +109,32 @@ class SettingsRepository private constructor(context: Context) {
     fun getDefaultSoundUriBlocking(): String? = runBlocking { defaultSoundUri.first() }
 
     companion object {
+        // ---------- Snooze константы ----------
+
+        /** Дефолт единого интервала отложки (минуты). Совпадает со старым DEFAULT_SNOOZE_SHORT. */
+        const val DEFAULT_SNOOZE_SMART = 2
+
+        /** Минимум интервала отложки (минуты). */
+        const val SNOOZE_MIN = 1
+
+        /** Максимум интервала отложки (минуты) — 6 часов. */
+        const val SNOOZE_MAX = 360
+
+        // Legacy-дефолты. Нужны только для миграции. Не использовать в новом коде.
         const val DEFAULT_SNOOZE_SHORT = 2
         const val DEFAULT_SNOOZE_LONG = 30
 
         val DEFAULT_THEME = AppTheme.PALETTE
 
+        // ---------- Ключи DataStore ----------
+
+        private val KEY_SNOOZE_SMART = intPreferencesKey("snooze_smart_minutes")
+
+        // Legacy-ключи. Не удаляем — оставлены для обратной совместимости
+        // и возможного возврата к двум интервалам в будущих волнах.
         private val KEY_SNOOZE_SHORT = intPreferencesKey("snooze_short_minutes")
         private val KEY_SNOOZE_LONG = intPreferencesKey("snooze_long_minutes")
+
         private val KEY_APP_THEME = stringPreferencesKey("app_theme")
         private val KEY_DEFAULT_SOUND_URI = stringPreferencesKey("default_sound_uri")
 

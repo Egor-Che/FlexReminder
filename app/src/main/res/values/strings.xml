@@ -242,4 +242,8 @@
     <string name="sound_enable">Включить звук</string>
     <string name="sound_disable">Выключить звук</string>
     <string name="sound_event_disabled">Событие выключено</string>
+	<string name="label_snooze_interval">Интервал отложки</string>
+    <string name="dialog_snooze_title">Интервал отложки</string>
+    <string name="label_snooze_range">Минут (1–360)</string>
+    <string name="dialog_snooze_error_message">Введите число от 1 до 360</string>
 </resources>

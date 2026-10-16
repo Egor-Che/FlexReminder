@@ -54,8 +54,8 @@ class ReminderReceiver : BroadcastReceiver() {
 
                     val snoozeCount = iteration.snoozeCount
                     val settings = SettingsRepository.get(context)
-                    val snoozeShort = settings.getSnoozeShort()
-                    val snoozeLong = settings.getSnoozeLong()
+                    // FEAT #27: единый интервал отложки.
+                    val snoozeMinutes = settings.getSnoozeSmart()
 
                     // Определяем канал: silent / custom / default / базовый
                     val channelId = resolveChannel(context, reminder)
@@ -64,8 +64,7 @@ class ReminderReceiver : BroadcastReceiver() {
                         reminder = reminder,
                         dateMillis = scheduledDate,
                         snoozeCount = snoozeCount,
-                        snoozeShortMinutes = snoozeShort,
-                        snoozeLongMinutes = snoozeLong
+                        snoozeMinutes = snoozeMinutes
                     )
 
                     Notifications.show(
@@ -75,11 +74,9 @@ class ReminderReceiver : BroadcastReceiver() {
                         text = notes,
                         channelId = channelId,
                         dateMillis = scheduledDate,
-                        showSnoozeShort = flags.showSnoozeShort,
-                        showSnoozeLong = flags.showSnoozeLong,
+                        showSnooze = flags.showSnooze,
                         showSkip = flags.showSkip,
-                        snoozeShortMinutes = snoozeShort,
-                        snoozeLongMinutes = snoozeLong
+                        snoozeMinutes = snoozeMinutes
                     )
                 }
 
