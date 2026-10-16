@@ -47,8 +47,7 @@ fun SettingsScreen(
 ) {
     val vm: SettingsViewModel = viewModel()
 
-    val snoozeShort by vm.snoozeShort.collectAsStateWithLifecycle()
-    val snoozeLong by vm.snoozeLong.collectAsStateWithLifecycle()
+    val snoozeSmart by vm.snoozeSmart.collectAsStateWithLifecycle()
     val appTheme by vm.appTheme.collectAsStateWithLifecycle()
     val defaultSoundUri by vm.defaultSoundUri.collectAsStateWithLifecycle()
     val defaultSoundName by vm.defaultSoundName.collectAsStateWithLifecycle()
@@ -82,14 +81,9 @@ fun SettingsScreen(
             SectionHeader(stringResource(R.string.section_snooze))
 
             SettingRow(
-                title = stringResource(R.string.label_snooze_short),
-                subtitle = formatMinutes(snoozeShort),
-                onClick = { vm.openEditor(SnoozeField.SHORT) }
-            )
-            SettingRow(
-                title = stringResource(R.string.label_snooze_long),
-                subtitle = formatMinutes(snoozeLong),
-                onClick = { vm.openEditor(SnoozeField.LONG) }
+                title = stringResource(R.string.label_snooze_interval),
+                subtitle = formatMinutes(snoozeSmart),
+                onClick = { vm.openEditor(SnoozeField.SMART) }
             )
 
             Spacer(Modifier.height(8.dp))
@@ -127,10 +121,7 @@ fun SettingsScreen(
     }
 
     if (snoozeError != null) {
-        SnoozeErrorDialog(
-            field = snoozeError!!,
-            onDismiss = vm::dismissSnoozeError
-        )
+        SnoozeErrorDialog(onDismiss = vm::dismissSnoozeError)
     }
 
     if (themeDialogOpen) {
@@ -213,24 +204,15 @@ private fun SnoozeEditorDialog(
     onSave: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val title = when (field) {
-        SnoozeField.SHORT -> stringResource(R.string.dialog_snooze_short_title)
-        SnoozeField.LONG -> stringResource(R.string.dialog_snooze_long_title)
-    }
-    val rangeLabel = when (field) {
-        SnoozeField.SHORT -> stringResource(R.string.label_snooze_range_short)
-        SnoozeField.LONG -> stringResource(R.string.label_snooze_range_long)
-    }
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = { Text(stringResource(R.string.dialog_snooze_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    label = { Text(rangeLabel) },
+                    label = { Text(stringResource(R.string.label_snooze_range)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
@@ -269,18 +251,11 @@ private fun SnoozeEditorDialog(
 }
 
 @Composable
-private fun SnoozeErrorDialog(
-    field: SnoozeField,
-    onDismiss: () -> Unit
-) {
-    val messageRes = when (field) {
-        SnoozeField.SHORT -> R.string.dialog_snooze_error_short
-        SnoozeField.LONG -> R.string.dialog_snooze_error_long
-    }
+private fun SnoozeErrorDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_snooze_error_title)) },
-        text = { Text(stringResource(messageRes)) },
+        text = { Text(stringResource(R.string.dialog_snooze_error_message)) },
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.common_ok))

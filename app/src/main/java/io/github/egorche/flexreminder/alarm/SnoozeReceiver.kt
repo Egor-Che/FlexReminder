@@ -122,8 +122,8 @@ class SnoozeReceiver : BroadcastReceiver() {
                 val snoozeCount = iteration?.snoozeCount ?: 0
 
                 val settings = SettingsRepository.get(context)
-                val snoozeShort = settings.getSnoozeShort()
-                val snoozeLong = settings.getSnoozeLong()
+                // FEAT #27: единый интервал отложки.
+                val snoozeMinutes = settings.getSnoozeSmart()
 
                 val channelId = resolveChannel(context, reminder)
 
@@ -131,8 +131,7 @@ class SnoozeReceiver : BroadcastReceiver() {
                     reminder = reminder,
                     dateMillis = dateMillis,
                     snoozeCount = snoozeCount,
-                    snoozeShortMinutes = snoozeShort,
-                    snoozeLongMinutes = snoozeLong
+                    snoozeMinutes = snoozeMinutes
                 )
 
                 Notifications.show(
@@ -142,11 +141,9 @@ class SnoozeReceiver : BroadcastReceiver() {
                     text = notes,
                     channelId = channelId,
                     dateMillis = dateMillis,
-                    showSnoozeShort = flags.showSnoozeShort,
-                    showSnoozeLong = flags.showSnoozeLong,
+                    showSnooze = flags.showSnooze,
                     showSkip = flags.showSkip,
-                    snoozeShortMinutes = snoozeShort,
-                    snoozeLongMinutes = snoozeLong
+                    snoozeMinutes = snoozeMinutes
                 )
             } finally {
                 pending.finish()
@@ -213,25 +210,22 @@ class SnoozeReceiver : BroadcastReceiver() {
         fun cancelAllSnoozes(context: Context, reminderId: Long) {
             val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val repository = SettingsRepository.get(context)
-            val minutesList = listOf(
-                repository.getSnoozeShortBlocking(),
-                repository.getSnoozeLongBlocking()
+            // FEAT #27: единственная отложка — единый интервал.
+            val minutes = repository.getSnoozeSmartBlocking()
+
+            val intent = Intent(context, SnoozeReceiver::class.java).apply {
+                action = ACTION_SNOOZE_FIRE
+                data = Uri.parse("flexreminder://snooze-fire/$reminderId/-1/$minutes")
+            }
+            val pi = PendingIntent.getBroadcast(
+                context,
+                fireRequestCode(reminderId, minutes),
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
             )
-            for (minutes in minutesList) {
-                val intent = Intent(context, SnoozeReceiver::class.java).apply {
-                    action = ACTION_SNOOZE_FIRE
-                    data = Uri.parse("flexreminder://snooze-fire/$reminderId/-1/$minutes")
-                }
-                val pi = PendingIntent.getBroadcast(
-                    context,
-                    fireRequestCode(reminderId, minutes),
-                    intent,
-                    PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-                )
-                if (pi != null) {
-                    am.cancel(pi)
-                    pi.cancel()
-                }
+            if (pi != null) {
+                am.cancel(pi)
+                pi.cancel()
             }
             NotificationManagerCompat.from(context).cancel(reminderId.toInt())
         }

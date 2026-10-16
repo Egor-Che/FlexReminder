@@ -14,20 +14,21 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * Поле настройки интервала отложки.
+ *
+ * До FEAT #27 было два поля (SHORT/LONG). Теперь одно — SMART.
+ * Enum оставлен как каркас для диалога (min/max/presets).
+ */
 enum class SnoozeField(
     val minMinutes: Int,
     val maxMinutes: Int,
     val presets: List<Int>
 ) {
-    SHORT(
-        minMinutes = 1,
-        maxMinutes = 60,
-        presets = listOf(1, 2, 3, 5, 10, 15, 30, 60)
-    ),
-    LONG(
-        minMinutes = 20,
-        maxMinutes = 720,
-        presets = listOf(20, 30, 60, 120, 180, 360, 480, 720)
+    SMART(
+        minMinutes = SettingsRepository.SNOOZE_MIN,
+        maxMinutes = SettingsRepository.SNOOZE_MAX,
+        presets = listOf(1, 5, 10, 30, 60, 120, 180, 360)
     )
 }
 
@@ -35,20 +36,13 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = SettingsRepository.get(app)
 
-    // ---------- Snooze ----------
+    // ---------- Snooze (единый интервал, FEAT #27) ----------
 
-    val snoozeShort: StateFlow<Int> = repo.snoozeShortMinutes
+    val snoozeSmart: StateFlow<Int> = repo.snoozeSmartMinutes
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            SettingsRepository.DEFAULT_SNOOZE_SHORT
-        )
-
-    val snoozeLong: StateFlow<Int> = repo.snoozeLongMinutes
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            SettingsRepository.DEFAULT_SNOOZE_LONG
+            SettingsRepository.DEFAULT_SNOOZE_SMART
         )
 
     // ---------- Тема ----------
@@ -106,7 +100,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- Snooze-диалог ----------
+    // ---------- Диалог интервала отложки ----------
 
     private val _editingField = MutableStateFlow<SnoozeField?>(null)
     val editingField: StateFlow<SnoozeField?> = _editingField.asStateFlow()
@@ -119,10 +113,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openEditor(field: SnoozeField) {
         _editingField.value = field
-        _editingValue.value = when (field) {
-            SnoozeField.SHORT -> snoozeShort.value.toString()
-            SnoozeField.LONG -> snoozeLong.value.toString()
-        }
+        _editingValue.value = snoozeSmart.value.toString()
     }
 
     fun closeEditor() {
@@ -132,7 +123,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateEditingValue(newValue: String) {
-        // только цифры, до 3 символов (максимум 720)
+        // только цифры, до 3 символов (максимум 360)
         _editingValue.value = newValue.filter { it.isDigit() }.take(3)
     }
 
@@ -146,12 +137,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         viewModelScope.launch {
-            val currentShort = snoozeShort.value
-            val currentLong = snoozeLong.value
-            when (field) {
-                SnoozeField.SHORT -> repo.setSnoozeIntervals(value, currentLong)
-                SnoozeField.LONG -> repo.setSnoozeIntervals(currentShort, value)
-            }
+            repo.setSnoozeSmart(value)
             closeEditor()
         }
     }
