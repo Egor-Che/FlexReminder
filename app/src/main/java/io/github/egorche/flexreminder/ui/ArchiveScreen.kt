@@ -61,6 +61,12 @@ fun ArchiveScreen(
     val vm: ArchiveViewModel = viewModel()
     val archived by vm.archived.collectAsStateWithLifecycle()
 
+    val settingsVm: SettingsViewModel = viewModel()
+    val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
+
+    // Архив всегда в монохроме, но адаптируется под текущую тему (светлая/тёмная)
+    val archiveTheme = if (appTheme == AppTheme.DARK) AppTheme.DARK else AppTheme.MONOCHROME
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -124,6 +130,7 @@ fun ArchiveScreen(
                     ArchiveCard(
                         reminder = reminder,
                         itemIndex = index,
+                        theme = archiveTheme,
                         onClick = { onOpenHistory(reminder.id) }
                     )
                 }
@@ -164,16 +171,12 @@ fun ArchiveScreen(
 private fun ArchiveCard(
     reminder: Reminder,
     itemIndex: Int,
+    theme: AppTheme,
     onClick: () -> Unit
 ) {
-    val cardBg = if (itemIndex % 2 == 0)
-        AppThemeColors.MonoCardEven
-    else
-        AppThemeColors.MonoCardOdd
-
-    val monoTheme = AppTheme.MONOCHROME
-    val contentColor = AppThemeColors.cardContentColor(monoTheme)
-    val secondaryColor = AppThemeColors.cardContentColorSecondary(monoTheme)
+    val cardBg = AppThemeColors.cardBackground(theme, null, itemIndex)
+    val contentColor = AppThemeColors.cardContentColor(theme)
+    val secondaryColor = AppThemeColors.cardContentColorSecondary(theme)
 
     val datePattern = stringResource(R.string.format_date_short)
     val df = remember(datePattern) {

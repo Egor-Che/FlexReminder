@@ -65,6 +65,12 @@ fun ReminderHistoryScreen(
     val iterations by vm.iterations.collectAsStateWithLifecycle()
     val activeDates by vm.activeDates.collectAsStateWithLifecycle()
 
+    val settingsVm: SettingsViewModel = viewModel()
+    val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
+
+    // Архив всегда в монохроме, но адаптируется под текущую тему (светлая/тёмная)
+    val historyTheme = if (appTheme == AppTheme.DARK) AppTheme.DARK else AppTheme.MONOCHROME
+
     val vm2: ReminderViewModel = viewModel()
 
     var selectedIterationDate by remember { mutableStateOf<Long?>(null) }
@@ -113,11 +119,9 @@ fun ReminderHistoryScreen(
             return@Scaffold
         }
 
-        // Архив всегда в монохроме
-        val monoTheme = AppTheme.MONOCHROME
-        val contentColor = AppThemeColors.cardContentColor(monoTheme)
-        val secondaryColor = AppThemeColors.cardContentColorSecondary(monoTheme)
-        val cardBg = AppThemeColors.MonoCardEven
+        val contentColor = AppThemeColors.cardContentColor(historyTheme)
+        val secondaryColor = AppThemeColors.cardContentColorSecondary(historyTheme)
+        val cardBg = AppThemeColors.cardBackground(historyTheme, null, 0)
 
         Column(
             modifier = Modifier
@@ -225,7 +229,7 @@ fun ReminderHistoryScreen(
                     ReminderCalendar(
                         selectedDates = activeDates,
                         readOnly = true,
-                        theme = monoTheme,
+                        theme = historyTheme,
                         colorIndex = null,
                         onDateClick = { dateMillis ->
                             selectedIterationDate = dateMillis
@@ -241,7 +245,7 @@ fun ReminderHistoryScreen(
                 onClick = { onCreateFromExample(r.id) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AppThemeColors.MonoAccentOn,
+                    containerColor = AppThemeColors.accent(historyTheme, null),
                     contentColor = AppThemeColors.onAccentColor()
                 )
             ) {
