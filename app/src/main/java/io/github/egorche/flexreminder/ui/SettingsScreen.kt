@@ -311,6 +311,14 @@ private fun ThemeDialog(
                     selected = current == AppTheme.MONOCHROME,
                     onClick = { onPick(AppTheme.MONOCHROME) }
                 )
+                Spacer(Modifier.height(8.dp))
+                ThemeOption(
+                    theme = AppTheme.DARK,
+                    title = stringResource(R.string.theme_dark),
+                    subtitle = stringResource(R.string.dialog_theme_dark_desc),
+                    selected = current == AppTheme.DARK,
+                    onClick = { onPick(AppTheme.DARK) }
+                )
             }
         },
         confirmButton = {
@@ -376,4 +384,5 @@ private fun formatPreset(minutes: Int): String = when {
 private fun themeLabel(theme: AppTheme): String = when (theme) {
     AppTheme.PALETTE -> stringResource(R.string.theme_palette)
     AppTheme.MONOCHROME -> stringResource(R.string.theme_monochrome)
+    AppTheme.DARK -> stringResource(R.string.theme_dark)
 }

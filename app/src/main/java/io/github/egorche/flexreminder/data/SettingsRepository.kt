@@ -1,6 +1,7 @@
 package io.github.egorche.flexreminder.data
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -15,12 +16,14 @@ private val Context.settingsDataStore by preferencesDataStore(name = "app_settin
 
 enum class AppTheme {
     MONOCHROME,
-    PALETTE
+    PALETTE,
+    DARK
 }
 
 class SettingsRepository private constructor(context: Context) {
 
-    private val dataStore = context.applicationContext.settingsDataStore
+    private val appContext = context.applicationContext
+    private val dataStore = appContext.settingsDataStore
 
     // ---------- Snooze интервал (FEAT #27) ----------
     //
@@ -74,19 +77,39 @@ class SettingsRepository private constructor(context: Context) {
 
     // ---------- Тема ----------
 
-    val appTheme: Flow<AppTheme> = dataStore.data.map { prefs ->
-        val raw = prefs[KEY_APP_THEME]
-        try {
-            AppTheme.valueOf(raw ?: DEFAULT_THEME.name)
-        } catch (_: Exception) {
-            DEFAULT_THEME
+    val appTheme: Flow<AppTheme> = dataStore.data
+        .onStart { ensureThemeInitialized() }
+        .map { prefs ->
+            val raw = prefs[KEY_APP_THEME]
+            try {
+                AppTheme.valueOf(raw ?: DEFAULT_THEME.name)
+            } catch (_: Exception) {
+                DEFAULT_THEME
+            }
         }
-    }
 
     suspend fun setAppTheme(theme: AppTheme) {
         dataStore.edit { prefs ->
             prefs[KEY_APP_THEME] = theme.name
         }
+    }
+
+    /**
+     * При первом запуске (ключа нет) — фиксируем тему по системе:
+     *  - если в системе включена тёмная тема → DARK;
+     *  - иначе → PALETTE (дефолт).
+     * После этого системные изменения больше не влияют на выбор темы.
+     */
+    private suspend fun ensureThemeInitialized() {
+        val prefs = dataStore.data.first()
+        if (prefs[KEY_APP_THEME] != null) return
+        val initial = if (isSystemInDarkMode()) AppTheme.DARK else AppTheme.PALETTE
+        dataStore.edit { it[KEY_APP_THEME] = initial.name }
+    }
+
+    private fun isSystemInDarkMode(): Boolean {
+        val uiMode = appContext.resources.configuration.uiMode
+        return (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     }
 
     // ---------- Звук по умолчанию ----------
@@ -124,6 +147,7 @@ class SettingsRepository private constructor(context: Context) {
         const val DEFAULT_SNOOZE_SHORT = 2
         const val DEFAULT_SNOOZE_LONG = 30
 
+        /** Дефолт темы, если по каким-то причинам не удалось определить системную. */
         val DEFAULT_THEME = AppTheme.PALETTE
 
         // ---------- Ключи DataStore ----------
