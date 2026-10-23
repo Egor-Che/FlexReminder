@@ -2,10 +2,12 @@ package io.github.egorche.flexreminder.ui
 
 import android.Manifest
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,12 +25,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,18 +42,29 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,11 +78,12 @@ import io.github.egorche.flexreminder.data.IterationStatus
 import io.github.egorche.flexreminder.data.Reminder
 import io.github.egorche.flexreminder.data.ScheduleMode
 import io.github.egorche.flexreminder.ui.theme.AppThemeColors
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ReminderListScreen(
     vm: ReminderViewModel,
@@ -84,6 +100,12 @@ fun ReminderListScreen(
     val settingsVm: SettingsViewModel = viewModel()
     val appTheme by settingsVm.appTheme.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
+
     val iterationsByReminder = remember(allIterations) {
         allIterations.groupBy { it.reminderId }
     }
@@ -98,7 +120,10 @@ fun ReminderListScreen(
         }
     }
 
+    val undoLabel = stringResource(R.string.action_undo)
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.screen_list_title)) },
@@ -151,7 +176,7 @@ fun ReminderListScreen(
                     items = list,
                     key = { _, r -> r.id }
                 ) { index, r ->
-                    ReminderCard(
+                    SwipeableReminderCard(
                         reminder = r,
                         iterations = iterationsByReminder[r.id].orEmpty(),
                         theme = appTheme,
@@ -161,14 +186,159 @@ fun ReminderListScreen(
                         onToggleSilent = {
                             if (r.enabled) vm.setSilent(r, !r.silent)
                         },
-                        onMark = { onMark(r.id) }
+                        onMark = { onMark(r.id) },
+                        onSwipeComplete = {
+                            vm.markNearestCompleted(r) { result ->
+                                if (result.success) {
+                                    scope.launch {
+                                        val msg = context.getString(R.string.snackbar_swipe_completed, r.title)
+                                        val res = snackbarHostState.showSnackbar(
+                                            message = msg,
+                                            actionLabel = undoLabel,
+                                            duration = androidx.compose.material3.SnackbarDuration.Short
+                                        )
+                                        if (res == SnackbarResult.ActionPerformed) {
+                                            vm.undoSwipeAction(r, result)
+                                        }
+                                    }
+                                } else {
+                                    Toast.makeText(context, R.string.toast_no_active_iterations, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        onSwipeSkip = {
+                            vm.markNearestSkipped(r) { result ->
+                                if (result.success) {
+                                    scope.launch {
+                                        val msg = context.getString(R.string.snackbar_swipe_skipped, r.title)
+                                        val res = snackbarHostState.showSnackbar(
+                                            message = msg,
+                                            actionLabel = undoLabel,
+                                            duration = androidx.compose.material3.SnackbarDuration.Short
+                                        )
+                                        if (res == SnackbarResult.ActionPerformed) {
+                                            vm.undoSwipeAction(r, result)
+                                        }
+                                    }
+                                } else {
+                                    Toast.makeText(context, R.string.toast_no_active_iterations, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        onDelete = { reminderToDelete = r }
                     )
                 }
             }
         }
     }
+
+    // Диалог удаления
+    reminderToDelete?.let { reminder ->
+        AlertDialog(
+            onDismissRequest = { reminderToDelete = null },
+            title = { Text(stringResource(R.string.dialog_delete_reminder_title)) },
+            text = { Text(stringResource(R.string.dialog_delete_reminder_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteById(reminder.id) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = context.getString(R.string.snackbar_reminder_deleted, reminder.title),
+                                duration = androidx.compose.material3.SnackbarDuration.Short
+                            )
+                        }
+                    }
+                    reminderToDelete = null
+                }) {
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { reminderToDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun SwipeableReminderCard(
+    reminder: Reminder,
+    iterations: List<Iteration>,
+    theme: AppTheme,
+    itemIndex: Int,
+    onClick: () -> Unit,
+    onToggle: () -> Unit,
+    onToggleSilent: () -> Unit,
+    onMark: () -> Unit,
+    onSwipeComplete: () -> Unit,
+    onSwipeSkip: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> onSwipeComplete()
+                SwipeToDismissBoxValue.EndToStart -> onSwipeSkip()
+                else -> {}
+            }
+            false // Возвращаем карточку на место
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            val color = when (dismissState.dismissDirection) {
+                SwipeToDismissBoxValue.StartToEnd -> AppThemeColors.completed(theme)
+                SwipeToDismissBoxValue.EndToStart -> AppThemeColors.skippedUser(theme)
+                else -> Color.Transparent
+            }
+            val icon = when (dismissState.dismissDirection) {
+                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Check
+                SwipeToDismissBoxValue.EndToStart -> Icons.Default.SkipNext
+                else -> null
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color.copy(alpha = 0.5f))
+                    .padding(horizontal = 16.dp),
+                contentAlignment = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
+                    Alignment.CenterStart else Alignment.CenterEnd
+            ) {
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        ReminderCard(
+            reminder = reminder,
+            iterations = iterations,
+            theme = theme,
+            itemIndex = itemIndex,
+            onClick = onClick,
+            onToggle = onToggle,
+            onToggleSilent = onToggleSilent,
+            onMark = onMark,
+            onLongClick = onDelete
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ReminderCard(
     reminder: Reminder,
@@ -178,7 +348,8 @@ private fun ReminderCard(
     onClick: () -> Unit,
     onToggle: () -> Unit,
     onToggleSilent: () -> Unit,
-    onMark: () -> Unit
+    onMark: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val todayMidnight = remember { DateUtils.midnight(System.currentTimeMillis()) }
     val triple = remember(reminder, iterations) {
@@ -193,7 +364,10 @@ private fun ReminderCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         colors = CardDefaults.cardColors(containerColor = cardBg)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

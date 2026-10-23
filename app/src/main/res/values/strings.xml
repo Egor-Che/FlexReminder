@@ -17,6 +17,16 @@
     <string name="action_mark">Отметить</string>
     <string name="action_create_from_example">Создать по примеру</string>
     <string name="action_edit">Редактировать</string>
+    <string name="action_undo">Отменить</string>
+
+    <!-- Свайпы в списке (FEAT #31) -->
+    <string name="snackbar_swipe_completed">Выполнено: %1$s</string>
+    <string name="snackbar_swipe_skipped">Пропущено: %1$s</string>
+    <string name="snackbar_reminder_deleted">Удалено: %1$s</string>
+    <string name="toast_iteration_already_marked">Итерация уже отмечена</string>
+    <string name="toast_no_active_iterations">Нет активных итераций на сегодня</string>
+    <string name="dialog_delete_reminder_title">Удалить напоминание?</string>
+    <string name="dialog_delete_reminder_message">Напоминание будет удалено вместе с историей срабатываний. Восстановить данные невозможно.</string>
 
     <!-- Эмодзи -->
     <string name="emoji_sound_on">🔔</string>
