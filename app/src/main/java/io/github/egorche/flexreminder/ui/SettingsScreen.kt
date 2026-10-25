@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -56,6 +57,11 @@ fun SettingsScreen(
     val themeDialogOpen by vm.themeDialogOpen.collectAsStateWithLifecycle()
     val soundDialogOpen by vm.soundDialogOpen.collectAsStateWithLifecycle()
     val snoozeError by vm.snoozeError.collectAsStateWithLifecycle()
+
+    // Настройки виджета
+    val widgetTheme by vm.widgetTheme.collectAsStateWithLifecycle()
+    val widgetShowNotes by vm.widgetShowNotes.collectAsStateWithLifecycle()
+    val widgetThemeDialogOpen by vm.widgetThemeDialogOpen.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -107,6 +113,49 @@ fun SettingsScreen(
                 subtitle = themeLabel(appTheme),
                 onClick = { vm.openThemeDialog() }
             )
+
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+
+            // --- Блок виджета (FEAT #32) ---
+            SectionHeader(stringResource(R.string.section_widget))
+            
+            // 1. Показывать заметки
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { vm.setWidgetShowNotes(!widgetShowNotes) }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.label_widget_show_notes),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                Switch(
+                    checked = widgetShowNotes,
+                    onCheckedChange = { vm.setWidgetShowNotes(it) }
+                )
+            }
+
+            // 2. Тема виджета
+            SettingRow(
+                title = stringResource(R.string.label_widget_theme),
+                subtitle = widgetThemeLabel(widgetTheme),
+                onClick = { vm.openWidgetThemeDialog() }
+            )
+
+            // 3. Подсказка про обновление (Вариант 2)
+            Text(
+                text = "При смене темы по расписанию виджет может обновиться с задержкой (до 30 минут). Чтобы применить изменения сразу, откройте приложение.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            
+            Spacer(Modifier.height(16.dp))
         }
     }
 
@@ -137,6 +186,14 @@ fun SettingsScreen(
             initialUri = defaultSoundUri,
             onPicked = { vm.setDefaultSoundUri(it) },
             onDismiss = { vm.closeSoundDialog() }
+        )
+    }
+
+    if (widgetThemeDialogOpen) {
+        WidgetThemeDialog(
+            current = widgetTheme,
+            onPick = vm::setWidgetTheme,
+            onDismiss = vm::closeWidgetThemeDialog
         )
     }
 }
@@ -311,6 +368,14 @@ private fun ThemeDialog(
                     selected = current == AppTheme.MONOCHROME,
                     onClick = { onPick(AppTheme.MONOCHROME) }
                 )
+                Spacer(Modifier.height(8.dp))
+                ThemeOption(
+                    theme = AppTheme.DARK,
+                    title = stringResource(R.string.theme_dark),
+                    subtitle = stringResource(R.string.dialog_theme_dark_desc),
+                    selected = current == AppTheme.DARK,
+                    onClick = { onPick(AppTheme.DARK) }
+                )
             }
         },
         confirmButton = {
@@ -354,6 +419,40 @@ private fun ThemeOption(
 }
 
 @Composable
+private fun WidgetThemeDialog(
+    current: String,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_widget_theme_title)) },
+        text = {
+            Column {
+                ThemeOption(
+                    theme = AppTheme.PALETTE,
+                    title = stringResource(R.string.widget_theme_system),
+                    subtitle = stringResource(R.string.widget_theme_system_desc),
+                    selected = current == "SYSTEM",
+                    onClick = { onPick("SYSTEM") }
+                )
+                Spacer(Modifier.height(8.dp))
+                ThemeOption(
+                    theme = AppTheme.PALETTE,
+                    title = stringResource(R.string.widget_theme_app),
+                    subtitle = stringResource(R.string.widget_theme_app_desc),
+                    selected = current == "APP",
+                    onClick = { onPick("APP") }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        }
+    )
+}
+
+@Composable
 private fun formatMinutes(minutes: Int): String = when {
     minutes < 60 -> stringResource(R.string.pattern_minutes_value, minutes)
     minutes == 60 -> stringResource(R.string.pattern_minutes_one_hour)
@@ -376,4 +475,12 @@ private fun formatPreset(minutes: Int): String = when {
 private fun themeLabel(theme: AppTheme): String = when (theme) {
     AppTheme.PALETTE -> stringResource(R.string.theme_palette)
     AppTheme.MONOCHROME -> stringResource(R.string.theme_monochrome)
+    AppTheme.DARK -> stringResource(R.string.theme_dark)
+}
+
+@Composable
+private fun widgetThemeLabel(theme: String): String = when (theme) {
+    "SYSTEM" -> stringResource(R.string.widget_theme_system)
+    "APP" -> stringResource(R.string.widget_theme_app)
+    else -> stringResource(R.string.widget_theme_system)
 }

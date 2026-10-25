@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
 
     <!-- Базовый стиль для диалогов -->
     <style name="DialogThemeBase" parent="android:Theme.Material.Light.Dialog">
         <!-- placeholder, переопределяется в наследниках -->
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 
     <!-- Монохром -->
@@ -12,6 +15,14 @@
         <item name="android:colorAccent">#4A4A4A</item>
         <item name="android:colorPrimary">#4A4A4A</item>
         <item name="android:colorPrimaryDark">#333333</item>
+    </style>
+
+    <!-- Тёмная тема -->
+    <style name="DialogThemeDark" parent="android:Theme.Material.Dialog">
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:colorAccent">#B0B0B0</item>
+        <item name="android:colorPrimary">#B0B0B0</item>
+        <item name="android:colorPrimaryDark">#808080</item>
     </style>
 
     <!-- Нейтральный серый для Палитры (когда цвет не выбран) -->

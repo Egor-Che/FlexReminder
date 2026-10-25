@@ -81,6 +81,7 @@ fun TimePickerDialogWrapper(
 
 private fun themeRes(theme: AppTheme, colorIndex: Int?): Int = when (theme) {
     AppTheme.MONOCHROME -> R.style.DialogThemeMonochrome
+    AppTheme.DARK -> R.style.DialogThemeDark
     AppTheme.PALETTE -> when (colorIndex) {
         null -> R.style.DialogThemeNeutral
         0 -> R.style.DialogThemeColor1

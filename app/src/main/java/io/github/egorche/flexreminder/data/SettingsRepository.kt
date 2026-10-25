@@ -1,6 +1,8 @@
 package io.github.egorche.flexreminder.data
 
 import android.content.Context
+import android.content.res.Configuration
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -15,25 +17,16 @@ private val Context.settingsDataStore by preferencesDataStore(name = "app_settin
 
 enum class AppTheme {
     MONOCHROME,
-    PALETTE
+    PALETTE,
+    DARK
 }
 
 class SettingsRepository private constructor(context: Context) {
 
-    private val dataStore = context.applicationContext.settingsDataStore
+    private val appContext = context.applicationContext
+    private val dataStore = appContext.settingsDataStore
 
     // ---------- Snooze интервал (FEAT #27) ----------
-    //
-    // До FEAT #27 было две настройки: snooze_short_minutes и snooze_long_minutes.
-    // Теперь одна — snooze_smart_minutes.
-    //
-    // Миграция (первое чтение, если snooze_smart_minutes ещё не задан):
-    //   1. Если short != DEFAULT_SNOOZE_SHORT → берём short.
-    //   2. Иначе, если long != DEFAULT_SNOOZE_LONG → берём long.
-    //   3. Иначе → DEFAULT_SNOOZE_SMART.
-    //   Затем обрезаем в [SNOOZE_MIN, SNOOZE_MAX].
-    //
-    // Старые ключи НЕ удаляем — на случай откатов или будущих миграций.
 
     val snoozeSmartMinutes: Flow<Int> = dataStore.data
         .onStart { ensureSnoozeSmartMigrated() }
@@ -51,11 +44,6 @@ class SettingsRepository private constructor(context: Context) {
     suspend fun getSnoozeSmart(): Int = snoozeSmartMinutes.first()
     fun getSnoozeSmartBlocking(): Int = runBlocking { snoozeSmartMinutes.first() }
 
-    /**
-     * Одноразовая миграция со старых ключей (short/long) на новый
-     * snooze_smart_minutes. Идемпотентна: если ключ уже установлен — сразу
-     * выходим, ничего не меняя.
-     */
     private suspend fun ensureSnoozeSmartMigrated() {
         val prefs = dataStore.data.first()
         if (prefs[KEY_SNOOZE_SMART] != null) return
@@ -74,19 +62,33 @@ class SettingsRepository private constructor(context: Context) {
 
     // ---------- Тема ----------
 
-    val appTheme: Flow<AppTheme> = dataStore.data.map { prefs ->
-        val raw = prefs[KEY_APP_THEME]
-        try {
-            AppTheme.valueOf(raw ?: DEFAULT_THEME.name)
-        } catch (_: Exception) {
-            DEFAULT_THEME
+    val appTheme: Flow<AppTheme> = dataStore.data
+        .onStart { ensureThemeInitialized() }
+        .map { prefs ->
+            val raw = prefs[KEY_APP_THEME]
+            try {
+                AppTheme.valueOf(raw ?: DEFAULT_THEME.name)
+            } catch (_: Exception) {
+                DEFAULT_THEME
+            }
         }
-    }
 
     suspend fun setAppTheme(theme: AppTheme) {
         dataStore.edit { prefs ->
             prefs[KEY_APP_THEME] = theme.name
         }
+    }
+
+    private suspend fun ensureThemeInitialized() {
+        val prefs = dataStore.data.first()
+        if (prefs[KEY_APP_THEME] != null) return
+        val initial = if (isSystemInDarkMode()) AppTheme.DARK else AppTheme.PALETTE
+        dataStore.edit { it[KEY_APP_THEME] = initial.name }
+    }
+
+    private fun isSystemInDarkMode(): Boolean {
+        val uiMode = appContext.resources.configuration.uiMode
+        return (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     }
 
     // ---------- Звук по умолчанию ----------
@@ -108,35 +110,77 @@ class SettingsRepository private constructor(context: Context) {
     suspend fun getDefaultSoundUri(): String? = defaultSoundUri.first()
     fun getDefaultSoundUriBlocking(): String? = runBlocking { defaultSoundUri.first() }
 
+    // ---------- Настройки виджета (FEAT #32) ----------
+
+    val widgetTheme: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_WIDGET_THEME] ?: DEFAULT_WIDGET_THEME
+    }
+
+    suspend fun setWidgetTheme(theme: String) {
+        dataStore.edit { it[KEY_WIDGET_THEME] = theme }
+    }
+
+    val widgetTransparency: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_WIDGET_TRANSPARENCY] ?: DEFAULT_WIDGET_TRANSPARENCY
+    }
+
+    suspend fun setWidgetTransparency(value: Int) {
+        val clamped = value.coerceIn(WIDGET_TRANSPARENCY_MIN, WIDGET_TRANSPARENCY_MAX)
+        dataStore.edit { it[KEY_WIDGET_TRANSPARENCY] = clamped }
+    }
+
+    val widgetShowNotes: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_WIDGET_SHOW_NOTES] ?: DEFAULT_WIDGET_SHOW_NOTES
+    }
+
+    suspend fun setWidgetShowNotes(show: Boolean) {
+        dataStore.edit { it[KEY_WIDGET_SHOW_NOTES] = show }
+    }
+
+    val widgetMaxLines: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_WIDGET_MAX_LINES] ?: DEFAULT_WIDGET_MAX_LINES
+    }
+
+    suspend fun setWidgetMaxLines(lines: Int) {
+        val clamped = lines.coerceIn(WIDGET_MAX_LINES_MIN, WIDGET_MAX_LINES_MAX)
+        dataStore.edit { it[KEY_WIDGET_MAX_LINES] = clamped }
+    }
+
     companion object {
         // ---------- Snooze константы ----------
-
-        /** Дефолт единого интервала отложки (минуты). Совпадает со старым DEFAULT_SNOOZE_SHORT. */
         const val DEFAULT_SNOOZE_SMART = 2
-
-        /** Минимум интервала отложки (минуты). */
         const val SNOOZE_MIN = 1
-
-        /** Максимум интервала отложки (минуты) — 6 часов. */
         const val SNOOZE_MAX = 360
 
-        // Legacy-дефолты. Нужны только для миграции. Не использовать в новом коде.
+        // Legacy-дефолты для миграции
         const val DEFAULT_SNOOZE_SHORT = 2
         const val DEFAULT_SNOOZE_LONG = 30
 
+        // ---------- Константы темы ----------
         val DEFAULT_THEME = AppTheme.PALETTE
 
+        // ---------- Константы виджета ----------
+        const val DEFAULT_WIDGET_THEME = "SYSTEM" // "SYSTEM" или "APP"
+        const val DEFAULT_WIDGET_TRANSPARENCY = 100 // проценты
+        const val WIDGET_TRANSPARENCY_MIN = 5
+        const val WIDGET_TRANSPARENCY_MAX = 100
+        const val DEFAULT_WIDGET_SHOW_NOTES = false
+        const val DEFAULT_WIDGET_MAX_LINES = 1
+        const val WIDGET_MAX_LINES_MIN = 1
+        const val WIDGET_MAX_LINES_MAX = 2
+
         // ---------- Ключи DataStore ----------
-
         private val KEY_SNOOZE_SMART = intPreferencesKey("snooze_smart_minutes")
-
-        // Legacy-ключи. Не удаляем — оставлены для обратной совместимости
-        // и возможного возврата к двум интервалам в будущих волнах.
         private val KEY_SNOOZE_SHORT = intPreferencesKey("snooze_short_minutes")
         private val KEY_SNOOZE_LONG = intPreferencesKey("snooze_long_minutes")
 
         private val KEY_APP_THEME = stringPreferencesKey("app_theme")
         private val KEY_DEFAULT_SOUND_URI = stringPreferencesKey("default_sound_uri")
+
+        private val KEY_WIDGET_THEME = stringPreferencesKey("widget_theme")
+        private val KEY_WIDGET_TRANSPARENCY = intPreferencesKey("widget_transparency")
+        private val KEY_WIDGET_SHOW_NOTES = booleanPreferencesKey("widget_show_notes")
+        private val KEY_WIDGET_MAX_LINES = intPreferencesKey("widget_max_lines")
 
         @Volatile
         private var INSTANCE: SettingsRepository? = null

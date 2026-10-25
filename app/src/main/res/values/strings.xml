@@ -17,6 +17,16 @@
     <string name="action_mark">Отметить</string>
     <string name="action_create_from_example">Создать по примеру</string>
     <string name="action_edit">Редактировать</string>
+    <string name="action_undo">Отменить</string>
+
+    <!-- Свайпы в списке (FEAT #31) -->
+    <string name="snackbar_swipe_completed">Выполнено: %1$s</string>
+    <string name="snackbar_swipe_skipped">Пропущено: %1$s</string>
+    <string name="snackbar_reminder_deleted">Удалено: %1$s</string>
+    <string name="toast_iteration_already_marked">Итерация уже отмечена</string>
+    <string name="toast_no_active_iterations">Нет активных итераций на сегодня</string>
+    <string name="dialog_delete_reminder_title">Удалить напоминание?</string>
+    <string name="dialog_delete_reminder_message">Напоминание будет удалено вместе с историей срабатываний. Восстановить данные невозможно.</string>
 
     <!-- Эмодзи -->
     <string name="emoji_sound_on">🔔</string>
@@ -126,23 +136,17 @@
     <string name="section_snooze">Отсрочка уведомления</string>
     <string name="section_notifications">Уведомления</string>
     <string name="section_appearance">Внешний вид</string>
-    <string name="label_snooze_short">Короткий интервал</string>
-    <string name="label_snooze_long">Длинный интервал</string>
     <string name="label_default_sound">Звук по умолчанию</string>
     <string name="label_theme">Тема</string>
+	<string name="theme_dark">Тёмная</string>
     <string name="theme_palette">Палитра</string>
     <string name="theme_monochrome">Монохром</string>
     <string name="dialog_theme_title">Тема оформления</string>
+    <string name="dialog_theme_dark_desc">Тёмный фон для комфортного использования вечером</string>
     <string name="dialog_theme_palette_desc">16 пастельных цветов для напоминаний</string>
     <string name="dialog_theme_monochrome_desc">Только оттенки серого, без цветных акцентов</string>
-    <string name="dialog_snooze_short_title">Короткий интервал</string>
-    <string name="dialog_snooze_long_title">Длинный интервал</string>
-    <string name="label_snooze_range_short">Диапазон от 1 до 60 минут</string>
-    <string name="label_snooze_range_long">Диапазон от 20 до 720 минут</string>
     <string name="label_snooze_presets">Быстрый выбор:</string>
     <string name="dialog_snooze_error_title">Некорректное значение</string>
-    <string name="dialog_snooze_error_short">Для короткого интервала выберите значение от 1 до 60 минут.</string>
-    <string name="dialog_snooze_error_long">Для длинного интервала выберите значение от 20 до 720 минут.</string>
     <string name="pattern_minutes_value">%1$d мин</string>
     <string name="pattern_hours_value">%1$d ч</string>
     <string name="pattern_hours_minutes_value">%1$d ч %2$d мин</string>
@@ -246,4 +250,19 @@
     <string name="dialog_snooze_title">Интервал отложки</string>
     <string name="label_snooze_range">Минут (1–360)</string>
     <string name="dialog_snooze_error_message">Введите число от 1 до 360</string>
+	
+    <!-- Виджет (FEAT #32) -->
+    <string name="widget_name">Напоминалка (список)</string>
+    <string name="widget_description">Ближайшие напоминания на рабочем столе</string>
+    <string name="widget_no_reminders">Нет активных напоминаний</string>
+	    <!-- Настройки виджета -->
+    <string name="section_widget">Виджет</string>
+    <string name="label_widget_theme">Тема виджета</string>
+    <string name="dialog_widget_theme_title">Тема виджета</string>
+    <string name="widget_theme_system">Системная</string>
+    <string name="widget_theme_system_desc">Следовать светлой/тёмной теме устройства</string>
+    <string name="widget_theme_app">Как в приложении</string>
+    <string name="widget_theme_app_desc">Использовать текущую тему приложения</string>
+    <string name="label_widget_transparency">Прозрачность фона: %1$d%%</string>
+    <string name="label_widget_show_notes">Показывать заметки</string>
 </resources>

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.egorche.flexreminder.alarm.SoundResolver
 import io.github.egorche.flexreminder.data.AppTheme
 import io.github.egorche.flexreminder.data.SettingsRepository
+import io.github.egorche.flexreminder.widget.ReminderWidgetProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,12 +15,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/**
- * Поле настройки интервала отложки.
- *
- * До FEAT #27 было два поля (SHORT/LONG). Теперь одно — SMART.
- * Enum оставлен как каркас для диалога (min/max/presets).
- */
 enum class SnoozeField(
     val minMinutes: Int,
     val maxMinutes: Int,
@@ -36,23 +31,11 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = SettingsRepository.get(app)
 
-    // ---------- Snooze (единый интервал, FEAT #27) ----------
-
     val snoozeSmart: StateFlow<Int> = repo.snoozeSmartMinutes
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            SettingsRepository.DEFAULT_SNOOZE_SMART
-        )
-
-    // ---------- Тема ----------
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.DEFAULT_SNOOZE_SMART)
 
     val appTheme: StateFlow<AppTheme> = repo.appTheme
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            SettingsRepository.DEFAULT_THEME
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.DEFAULT_THEME)
 
     private val _themeDialogOpen = MutableStateFlow(false)
     val themeDialogOpen: StateFlow<Boolean> = _themeDialogOpen.asStateFlow()
@@ -64,28 +47,20 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repo.setAppTheme(theme)
             _themeDialogOpen.value = false
+            // Обновляем виджет, если он следует за темой приложения
+            ReminderWidgetProvider.updateAll(getApplication())
         }
     }
 
-    // ---------- Звук по умолчанию ----------
-
     val defaultSoundUri: StateFlow<String?> = repo.defaultSoundUri
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            null
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val defaultSoundName: StateFlow<String?> = repo.defaultSoundUri
         .map { uri ->
             if (uri.isNullOrBlank()) null
             else SoundResolver.getTrackName(getApplication(), uri)
         }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            null
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _soundDialogOpen = MutableStateFlow(false)
     val soundDialogOpen: StateFlow<Boolean> = _soundDialogOpen.asStateFlow()
@@ -99,8 +74,6 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             _soundDialogOpen.value = false
         }
     }
-
-    // ---------- Диалог интервала отложки ----------
 
     private val _editingField = MutableStateFlow<SnoozeField?>(null)
     val editingField: StateFlow<SnoozeField?> = _editingField.asStateFlow()
@@ -123,7 +96,6 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateEditingValue(newValue: String) {
-        // только цифры, до 3 символов (максимум 360)
         _editingValue.value = newValue.filter { it.isDigit() }.take(3)
     }
 
@@ -144,5 +116,34 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun dismissSnoozeError() {
         _snoozeError.value = null
+    }
+
+    // --- Настройки виджета (FEAT #32) ---
+
+    val widgetTheme: StateFlow<String> = repo.widgetTheme
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.DEFAULT_WIDGET_THEME)
+
+    private val _widgetThemeDialogOpen = MutableStateFlow(false)
+    val widgetThemeDialogOpen: StateFlow<Boolean> = _widgetThemeDialogOpen.asStateFlow()
+
+    fun openWidgetThemeDialog() { _widgetThemeDialogOpen.value = true }
+    fun closeWidgetThemeDialog() { _widgetThemeDialogOpen.value = false }
+
+    fun setWidgetTheme(theme: String) {
+        viewModelScope.launch {
+            repo.setWidgetTheme(theme)
+            _widgetThemeDialogOpen.value = false
+            ReminderWidgetProvider.updateAll(getApplication())
+        }
+    }
+
+    val widgetShowNotes: StateFlow<Boolean> = repo.widgetShowNotes
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.DEFAULT_WIDGET_SHOW_NOTES)
+
+    fun setWidgetShowNotes(show: Boolean) {
+        viewModelScope.launch {
+            repo.setWidgetShowNotes(show)
+            ReminderWidgetProvider.updateAll(getApplication())
+        }
     }
 }

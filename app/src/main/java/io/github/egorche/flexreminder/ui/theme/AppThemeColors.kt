@@ -19,6 +19,12 @@ object AppThemeColors {
     val SkippedUserMonochrome = Color(0xFFAD9A76)
     val SkippedSystemMonochrome = Color(0xFF9C7A7A)
 
+    // ---------- Статусные цвета: Тёмная ----------
+
+    val CompletedDark = Color(0xFF7CB380)
+    val SkippedUserDark = Color(0xFFE0C06E)
+    val SkippedSystemDark = Color(0xFFD67A7A)
+
     // ---------- Монохром: серые ----------
 
     val MonoCardEven = Color(0xFFE8E8E8)
@@ -28,30 +34,45 @@ object AppThemeColors {
     val MonoScreenBg = Color(0xFFECECEC)
     val MonoCalendarHighlight = Color(0xFF6E6E6E)
 
+    // ---------- Тёмная: серые ----------
+
+    val DarkCardEven = Color(0xFF1E1E1E)
+    val DarkCardOdd = Color(0xFF252525)
+    val DarkAccent = Color(0xFF909090)
+    val DarkScreenBg = Color(0xFF121212)
+    val DarkCalendarHighlight = Color(0xFF6E6E6E)
+    val DarkTextPrimary = Color(0xFFE0E0E0)
+    val DarkTextSecondary = Color(0xFFA0A0A0)
+    val DarkDivider = Color(0xFF404040)
+
     /** Нейтральный серый — используется как акцент, пока цвет не выбран. */
     val NeutralAccent = Color(0xFF6E6E6E)
 
     // ---------- Fallback по теме ----------
 
     @Composable
-    fun completed(theme: AppTheme): Color =
-        if (theme == AppTheme.MONOCHROME) CompletedMonochrome else CompletedPalette
+    fun completed(theme: AppTheme): Color = when (theme) {
+        AppTheme.MONOCHROME -> CompletedMonochrome
+        AppTheme.PALETTE -> CompletedPalette
+        AppTheme.DARK -> CompletedDark
+    }
 
     @Composable
-    fun skippedUser(theme: AppTheme): Color =
-        if (theme == AppTheme.MONOCHROME) SkippedUserMonochrome else SkippedUserPalette
+    fun skippedUser(theme: AppTheme): Color = when (theme) {
+        AppTheme.MONOCHROME -> SkippedUserMonochrome
+        AppTheme.PALETTE -> SkippedUserPalette
+        AppTheme.DARK -> SkippedUserDark
+    }
 
     @Composable
-    fun skippedSystem(theme: AppTheme): Color =
-        if (theme == AppTheme.MONOCHROME) SkippedSystemMonochrome else SkippedSystemPalette
+    fun skippedSystem(theme: AppTheme): Color = when (theme) {
+        AppTheme.MONOCHROME -> SkippedSystemMonochrome
+        AppTheme.PALETTE -> SkippedSystemPalette
+        AppTheme.DARK -> SkippedSystemDark
+    }
 
     // ---------- Акцентный цвет ----------
 
-    /**
-     * Акцент для элементов напоминания (свитчи, карточка, кнопка «Отметить»).
-     *  - Монохром → тёмно-серый.
-     *  - Палитра: colorIndex задан → цвет напоминания, иначе → нейтральный серый.
-     */
     @Composable
     fun accent(
         theme: AppTheme,
@@ -59,20 +80,27 @@ object AppThemeColors {
     ): Color = when (theme) {
         AppTheme.MONOCHROME -> MonoAccentOn
         AppTheme.PALETTE -> ReminderPalette.get(colorIndex)?.color ?: NeutralAccent
+        AppTheme.DARK -> DarkAccent
     }
 
-    /**
-     * Акцент для редактора (Tab, кнопки, свитчи).
-     * Пока пользователь не выбрал цвет — нейтральный серый, чтобы не было
-     * дефолтного фиолетового Material.
-     */
     @Composable
     fun editorAccent(theme: AppTheme, colorIndex: Int?): Color = when (theme) {
         AppTheme.MONOCHROME -> MonoAccentOn
         AppTheme.PALETTE -> ReminderPalette.get(colorIndex)?.color ?: NeutralAccent
+        AppTheme.DARK -> DarkAccent
     }
 
     // ---------- Фон карточки в списке ----------
+    
+    // Функция для создания светлого пастельного цвета (смешиваем с белым)
+    private fun makePastel(base: Color): Color {
+        return Color(
+            red = base.red * 0.3f + 0.7f,
+            green = base.green * 0.3f + 0.7f,
+            blue = base.blue * 0.3f + 0.7f,
+            alpha = 1f // 100% непрозрачный
+        )
+    }
 
     @Composable
     fun cardBackground(
@@ -83,8 +111,9 @@ object AppThemeColors {
         AppTheme.MONOCHROME -> if (itemIndex % 2 == 0) MonoCardEven else MonoCardOdd
         AppTheme.PALETTE -> {
             val base = ReminderPalette.get(colorIndex)?.color
-            base?.copy(alpha = 0.28f) ?: MaterialTheme.colorScheme.surface
+            if (base != null) makePastel(base) else MaterialTheme.colorScheme.surface
         }
+        AppTheme.DARK -> if (itemIndex % 2 == 0) DarkCardEven else DarkCardOdd
     }
 
     // ---------- Фон экранов ----------
@@ -97,9 +126,10 @@ object AppThemeColors {
         AppTheme.MONOCHROME -> MonoScreenBg
         AppTheme.PALETTE -> {
             val base = ReminderPalette.get(colorIndex)?.color
-            base?.copy(alpha = 0.15f)
-                ?: MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            if (base != null) makePastel(base).copy(alpha = 0.3f) // Экран делаем полупрозрачным, чтобы отличался от карточек
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         }
+        AppTheme.DARK -> DarkScreenBg
     }
 
     @Composable
@@ -110,8 +140,9 @@ object AppThemeColors {
         AppTheme.MONOCHROME -> MonoCardEven
         AppTheme.PALETTE -> {
             val base = ReminderPalette.get(colorIndex)?.color
-            base?.copy(alpha = 0.22f) ?: MaterialTheme.colorScheme.surface
+            if (base != null) makePastel(base) else MaterialTheme.colorScheme.surface
         }
+        AppTheme.DARK -> DarkCardEven
     }
 
     // ---------- Подсветка календаря ----------
@@ -133,6 +164,7 @@ object AppThemeColors {
                 )
             } ?: NeutralAccent
         }
+        AppTheme.DARK -> DarkCalendarHighlight
     }
 
     // ---------- Текст ----------
@@ -141,12 +173,14 @@ object AppThemeColors {
     fun cardContentColor(theme: AppTheme): Color = when (theme) {
         AppTheme.MONOCHROME -> Color(0xFF1A1A1A)
         AppTheme.PALETTE -> MaterialTheme.colorScheme.onSurface
+        AppTheme.DARK -> DarkTextPrimary
     }
 
     @Composable
     fun cardContentColorSecondary(theme: AppTheme): Color = when (theme) {
         AppTheme.MONOCHROME -> Color(0xFF4D4D4D)
         AppTheme.PALETTE -> MaterialTheme.colorScheme.onSurfaceVariant
+        AppTheme.DARK -> DarkTextSecondary
     }
 
     @Composable
@@ -156,5 +190,6 @@ object AppThemeColors {
     fun dividerColor(theme: AppTheme): Color = when (theme) {
         AppTheme.MONOCHROME -> Color(0xFFBFBFBF)
         AppTheme.PALETTE -> MaterialTheme.colorScheme.outlineVariant
+        AppTheme.DARK -> DarkDivider
     }
 }
