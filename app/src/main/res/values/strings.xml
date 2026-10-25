@@ -250,4 +250,19 @@
     <string name="dialog_snooze_title">Интервал отложки</string>
     <string name="label_snooze_range">Минут (1–360)</string>
     <string name="dialog_snooze_error_message">Введите число от 1 до 360</string>
+	
+    <!-- Виджет (FEAT #32) -->
+    <string name="widget_name">Напоминалка (список)</string>
+    <string name="widget_description">Ближайшие напоминания на рабочем столе</string>
+    <string name="widget_no_reminders">Нет активных напоминаний</string>
+	    <!-- Настройки виджета -->
+    <string name="section_widget">Виджет</string>
+    <string name="label_widget_theme">Тема виджета</string>
+    <string name="dialog_widget_theme_title">Тема виджета</string>
+    <string name="widget_theme_system">Системная</string>
+    <string name="widget_theme_system_desc">Следовать светлой/тёмной теме устройства</string>
+    <string name="widget_theme_app">Как в приложении</string>
+    <string name="widget_theme_app_desc">Использовать текущую тему приложения</string>
+    <string name="label_widget_transparency">Прозрачность фона: %1$d%%</string>
+    <string name="label_widget_show_notes">Показывать заметки</string>
 </resources>

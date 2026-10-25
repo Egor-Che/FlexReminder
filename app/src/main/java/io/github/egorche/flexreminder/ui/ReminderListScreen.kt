@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -33,8 +34,6 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
@@ -62,6 +62,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -232,7 +233,6 @@ fun ReminderListScreen(
         }
     }
 
-    // Диалог удаления
     reminderToDelete?.let { reminder ->
         AlertDialog(
             onDismissRequest = { reminderToDelete = null },
@@ -284,7 +284,7 @@ private fun SwipeableReminderCard(
                 SwipeToDismissBoxValue.EndToStart -> onSwipeSkip()
                 else -> {}
             }
-            false // Возвращаем карточку на место
+            false
         }
     )
 
@@ -307,6 +307,7 @@ private fun SwipeableReminderCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp))
                     .background(color.copy(alpha = 0.5f))
                     .padding(horizontal = 16.dp),
                 contentAlignment = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
@@ -361,14 +362,17 @@ private fun ReminderCard(
     val secondaryColor = AppThemeColors.cardContentColorSecondary(theme)
     val accentColor = AppThemeColors.accent(theme, reminder.colorIndex)
 
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        colors = CardDefaults.cardColors(containerColor = cardBg)
+        shape = RoundedCornerShape(12.dp),
+        color = cardBg,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp // ЖЕСТКО УБИРАЕМ ТЕНЬ
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -20,7 +20,6 @@ object AppThemeColors {
     val SkippedSystemMonochrome = Color(0xFF9C7A7A)
 
     // ---------- Статусные цвета: Тёмная ----------
-    // Чуть светлее/ярче, чтобы читались на тёмном фоне
 
     val CompletedDark = Color(0xFF7CB380)
     val SkippedUserDark = Color(0xFFE0C06E)
@@ -74,12 +73,6 @@ object AppThemeColors {
 
     // ---------- Акцентный цвет ----------
 
-    /**
-     * Акцент для элементов напоминания (свитчи, карточка, кнопка «Отметить»).
-     *  - Монохром → тёмно-серый.
-     *  - Палитра: colorIndex задан → цвет напоминания, иначе → нейтральный серый.
-     *  - Тёмная → светло-серый.
-     */
     @Composable
     fun accent(
         theme: AppTheme,
@@ -90,9 +83,6 @@ object AppThemeColors {
         AppTheme.DARK -> DarkAccent
     }
 
-    /**
-     * Акцент для редактора (Tab, кнопки, свитчи).
-     */
     @Composable
     fun editorAccent(theme: AppTheme, colorIndex: Int?): Color = when (theme) {
         AppTheme.MONOCHROME -> MonoAccentOn
@@ -101,6 +91,16 @@ object AppThemeColors {
     }
 
     // ---------- Фон карточки в списке ----------
+    
+    // Функция для создания светлого пастельного цвета (смешиваем с белым)
+    private fun makePastel(base: Color): Color {
+        return Color(
+            red = base.red * 0.3f + 0.7f,
+            green = base.green * 0.3f + 0.7f,
+            blue = base.blue * 0.3f + 0.7f,
+            alpha = 1f // 100% непрозрачный
+        )
+    }
 
     @Composable
     fun cardBackground(
@@ -111,7 +111,7 @@ object AppThemeColors {
         AppTheme.MONOCHROME -> if (itemIndex % 2 == 0) MonoCardEven else MonoCardOdd
         AppTheme.PALETTE -> {
             val base = ReminderPalette.get(colorIndex)?.color
-            base?.copy(alpha = 0.28f) ?: MaterialTheme.colorScheme.surface
+            if (base != null) makePastel(base) else MaterialTheme.colorScheme.surface
         }
         AppTheme.DARK -> if (itemIndex % 2 == 0) DarkCardEven else DarkCardOdd
     }
@@ -126,8 +126,8 @@ object AppThemeColors {
         AppTheme.MONOCHROME -> MonoScreenBg
         AppTheme.PALETTE -> {
             val base = ReminderPalette.get(colorIndex)?.color
-            base?.copy(alpha = 0.15f)
-                ?: MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            if (base != null) makePastel(base).copy(alpha = 0.3f) // Экран делаем полупрозрачным, чтобы отличался от карточек
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         }
         AppTheme.DARK -> DarkScreenBg
     }
@@ -140,7 +140,7 @@ object AppThemeColors {
         AppTheme.MONOCHROME -> MonoCardEven
         AppTheme.PALETTE -> {
             val base = ReminderPalette.get(colorIndex)?.color
-            base?.copy(alpha = 0.22f) ?: MaterialTheme.colorScheme.surface
+            if (base != null) makePastel(base) else MaterialTheme.colorScheme.surface
         }
         AppTheme.DARK -> DarkCardEven
     }

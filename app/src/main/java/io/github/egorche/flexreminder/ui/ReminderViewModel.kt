@@ -12,19 +12,13 @@ import io.github.egorche.flexreminder.data.Iteration
 import io.github.egorche.flexreminder.data.IterationStatus
 import io.github.egorche.flexreminder.data.Reminder
 import io.github.egorche.flexreminder.data.StatusSource
+import io.github.egorche.flexreminder.widget.ReminderWidgetProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/**
- * Результат свайпа по карточке.
- * @param success false, если итерация не найдена на сегодня.
- * @param previousIteration состояние до свайпа (для Undo). null = записи не было (было PENDING).
- * @param dateMillis дата итерации (для Undo и для UI).
- * @param reminderId ID напоминания.
- */
 data class SwipeResult(
     val success: Boolean,
     val previousIteration: Iteration?,
@@ -76,6 +70,7 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         onDone()
+        ReminderWidgetProvider.updateAll(getApplication())
     }
 
     fun toggle(reminder: Reminder) = viewModelScope.launch {
@@ -87,6 +82,7 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
         } else {
             SnoozeReceiver.cancelAllSnoozes(getApplication(), reminder.id)
         }
+        ReminderWidgetProvider.updateAll(getApplication())
     }
 
     fun setSilent(reminder: Reminder, silent: Boolean) = viewModelScope.launch {
@@ -94,6 +90,7 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
         dao.update(updated)
         AlarmScheduler.cancel(getApplication(), reminder.id)
         if (updated.enabled) AlarmScheduler.schedule(getApplication(), updated)
+        ReminderWidgetProvider.updateAll(getApplication())
     }
 
     fun deleteById(id: Long, onDone: () -> Unit = {}) = viewModelScope.launch {
@@ -102,9 +99,8 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
         iterationDao.deleteByReminder(id)
         dao.deleteById(id)
         onDone()
+        ReminderWidgetProvider.updateAll(getApplication())
     }
-
-    // ---------- Свайпы (FEAT #31) ----------
 
     fun markNearestCompleted(reminder: Reminder, onResult: (SwipeResult) -> Unit) = viewModelScope.launch {
         processSwipe(reminder, IterationStatus.COMPLETED, onResult)
@@ -128,12 +124,8 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
-        // Сохраняем предыдущее состояние для Undo
         val previous = if (nearest.id == 0L) null else nearest
 
-        // Логика переключения (Toggle):
-        // Если текущий статус уже равен целевому (и это USER), то сбрасываем в PENDING.
-        // Иначе ставим целевой статус.
         val isSameUserStatus = nearest.status == targetStatus && nearest.statusSource == StatusSource.USER
 
         val newStatus = if (isSameUserStatus) IterationStatus.PENDING else targetStatus
@@ -158,11 +150,9 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
         AlarmScheduler.schedule(getApplication(), reminder)
 
         onResult(SwipeResult(true, previous, todayMidnight, reminder.id))
+        ReminderWidgetProvider.updateAll(getApplication())
     }
 
-    /**
-     * Откат свайпа (Undo). Восстанавливает статус итерации и перепланирует будильник.
-     */
     fun undoSwipeAction(reminder: Reminder, result: SwipeResult) = viewModelScope.launch {
         if (!result.success) return@launch
 
@@ -173,5 +163,6 @@ class ReminderViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         AlarmScheduler.schedule(getApplication(), reminder)
+        ReminderWidgetProvider.updateAll(getApplication())
     }
 }
